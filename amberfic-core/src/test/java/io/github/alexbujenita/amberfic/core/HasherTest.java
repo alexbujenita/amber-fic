@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import io.github.alexbujenita.amberfic.core.util.IOErrorInputStream;
 import io.github.alexbujenita.amberfic.core.util.ShortReadInputStream;
 import io.github.alexbujenita.amberfic.core.util.ZeroInputStream;
 import java.io.ByteArrayInputStream;
@@ -17,9 +18,12 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class HasherTest {
 
+    private static final String THREE_ZERO_HASH =
+            "6d518f8b31d1882feace10a9215f5d8cf5afe037652a1d11d9c1408d988c2a4f71a5edfc85d0712fa3f4e21b2c0a244c8c0d333bab454311e24067d2a83e5e59";
     private static final String STRING_TO_HASH = "abc";
     private static final String HASHED_STRING_512 =
             "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
@@ -102,15 +106,13 @@ class HasherTest {
     @Test
     void shouldCorrectlyHashWhenReadsAreShort() throws IOException {
         // given the hash fo three zero byte
-        final String hash512 =
-                "6d518f8b31d1882feace10a9215f5d8cf5afe037652a1d11d9c1408d988c2a4f71a5edfc85d0712fa3f4e21b2c0a244c8c0d333bab454311e24067d2a83e5e59";
         final Hasher hasher = new Hasher();
 
         // when the hash method is called with size 3
         final String hash = hasher.hash(new ShortReadInputStream(3));
 
         // then the resulting hash is correct
-        assertThat(hash).isEqualTo(hash512);
+        assertThat(hash).isEqualTo(THREE_ZERO_HASH);
     }
 
     @Test
@@ -121,6 +123,37 @@ class HasherTest {
         // when called it produces a 512 hash
         assertThat(hasher.hash(new ByteArrayInputStream(STRING_TO_HASH.getBytes(StandardCharsets.UTF_8))))
                 .isEqualTo(HASHED_STRING_512);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 3})
+    void shouldPropagateExceptions(int failAfter) {
+        // given a hasher
+        final Hasher hasher = new Hasher();
+
+        // when we call the hasher with a stream that throws, then the exception is propagated
+
+        assertThatThrownBy(() -> hasher.hash(new IOErrorInputStream(10, failAfter)))
+                .isInstanceOf(IOException.class)
+                .hasMessage("Simulated read failure");
+    }
+
+    @Test
+    void sameHasherInstanceIsntAffectedByError() throws IOException {
+        // given a hasher
+        final Hasher hasher = new Hasher();
+
+        // when we call the hasher with a stream that throws, then the exception is propagated
+
+        assertThatThrownBy(() -> hasher.hash(new IOErrorInputStream(10, 6)))
+                .isInstanceOf(IOException.class)
+                .hasMessage("Simulated read failure");
+
+        // and when we reuse the same instance with a non throwing stream
+        final String result = hasher.hash(new ZeroInputStream(3));
+
+        // then the resulting digest is correct
+        assertThat(result).isEqualTo(THREE_ZERO_HASH);
     }
 
     @Test

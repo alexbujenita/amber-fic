@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import io.github.alexbujenita.amberfic.core.util.ShortReadInputStream;
 import io.github.alexbujenita.amberfic.core.util.ZeroInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -96,6 +97,20 @@ class HasherTest {
 
         // then the computed hash is correct
         assertThat(hash).isEqualTo(expectedHash);
+    }
+
+    @Test
+    void shouldCorrectlyHashWhenReadsAreShort() throws IOException {
+        // given the hash fo three zero byte
+        final String hash512 =
+                "6d518f8b31d1882feace10a9215f5d8cf5afe037652a1d11d9c1408d988c2a4f71a5edfc85d0712fa3f4e21b2c0a244c8c0d333bab454311e24067d2a83e5e59";
+        final Hasher hasher = new Hasher();
+
+        // when the hash method is called with size 3
+        final String hash = hasher.hash(new ShortReadInputStream(3));
+
+        // then the resulting hash is correct
+        assertThat(hash).isEqualTo(hash512);
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.github.alexbujenita.amberfic.core;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Predicate;
@@ -9,10 +10,13 @@ import java.util.stream.Stream;
 
 final class FileWalker {
 
+    private static final Predicate<Path> IS_REGULAR_FILE_NO_SYM_LINK =
+            path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS);
+
     List<ScannedFile> walk(Path path) throws IOException {
         try (Stream<Path> stream = Files.walk(path)) {
 
-            return stream.filter(Predicate.not(Files::isDirectory))
+            return stream.filter(IS_REGULAR_FILE_NO_SYM_LINK)
                     .map(file -> new ScannedFile(file, getStandardizedPath(path, file)))
                     .toList();
         }

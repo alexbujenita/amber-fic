@@ -21,6 +21,7 @@ final class FileWalker {
         try (Stream<Path> stream = Files.walk(path)) {
 
             return stream.filter(IS_REGULAR_FILE_NO_SYM_LINK)
+                    .filter(Predicate.not(JunkFilter::isJunk))
                     .map(file -> new ScannedFile(file, getStandardizedPath(path, file)))
                     .sorted(COMPARE_FILE_NAMES)
                     .toList();

@@ -21,6 +21,17 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class FileWalkerTest {
 
+    public static String[] OS_JUNK_FILES = {
+        ".DS_Store",
+        ".fseventsd",
+        "Thumbs.db",
+        "ehthumbs.db",
+        "ehthumbs_vista.db",
+        ".directory",
+        "desktop.ini",
+        "._z.png"
+    };
+
     public static Stream<Arguments> osFsProvider() {
         return Stream.of(
                 arguments("MacOS", Configuration.osX()),
@@ -101,10 +112,11 @@ class FileWalkerTest {
         }
     }
 
-    @Test
-    void itReturnsFilesSortedByName() throws IOException {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void itReturnsFilesSortedByName(String name, Configuration configuration) throws IOException {
         // given a root dir and sub dirs with files
-        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
             final Path tempDir = jimfs.createTempDirectory();
             final Path rootPath = tempDir.resolve("root");
             final Path nested = rootPath.resolve("a");
@@ -123,6 +135,40 @@ class FileWalkerTest {
             assertThat(files)
                     .extracting(ScannedFile::relativeName)
                     .containsExactly("a.png", "a/abc.png", "a/z.png", "b.png");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shouldIgnoreOsJunkFiles(String name, Configuration configuration) throws IOException {
+        // given a root dir and sub dirs with files and some junk files
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path tempDir = jimfs.createTempDirectory();
+            final Path rootPath = tempDir.resolve("root");
+            final Path nested = rootPath.resolve("a");
+            Files.createDirectories(nested);
+
+            Files.createFile(rootPath.resolve("b.png"));
+            Files.createFile(rootPath.resolve("keep_me.db"));
+            Files.createFile(nested.resolve("z.png"));
+            Files.createFile(nested.resolve("._old_file.txt"));
+
+            createJunkFiles(List.of(rootPath, nested));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            List<ScannedFile> files = walker.walk(rootPath);
+
+            // then we don't include the OS' junk files
+            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("a/z.png", "b.png", "keep_me.db");
+        }
+    }
+
+    private void createJunkFiles(List<Path> paths) throws IOException {
+        for (Path path : paths) {
+            for (String junkFileName : OS_JUNK_FILES) {
+                Files.createFile(path.resolve(junkFileName));
+            }
         }
     }
 

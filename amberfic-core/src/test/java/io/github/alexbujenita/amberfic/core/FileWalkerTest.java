@@ -73,7 +73,7 @@ class FileWalkerTest {
 
             final FileWalker walker = new FileWalker();
 
-            // when we walk al the dirs
+            // when we walk all the dirs
             List<ScannedFile> files = walker.walk(rootPath);
 
             // then we only get the real file
@@ -98,6 +98,31 @@ class FileWalkerTest {
         @Override
         public void close() throws IOException {
             fileSystem.close();
+        }
+    }
+
+    @Test
+    void itReturnsFilesSortedByName() throws IOException {
+        // given a root dir and sub dirs with files
+        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+            final Path tempDir = jimfs.createTempDirectory();
+            final Path rootPath = tempDir.resolve("root");
+            final Path nested = rootPath.resolve("a");
+            Files.createDirectories(nested);
+
+            Files.createFile(rootPath.resolve("b.png"));
+            Files.createFile(rootPath.resolve("a.png"));
+            Files.createFile(nested.resolve("z.png"));
+            Files.createFile(nested.resolve("abc.png"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            List<ScannedFile> files = walker.walk(rootPath);
+
+            // then the files are sorted in alphabetic order
+            assertThat(files)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly("a.png", "a/abc.png", "a/z.png", "b.png");
         }
     }
 

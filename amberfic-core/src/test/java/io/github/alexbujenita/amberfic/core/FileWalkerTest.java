@@ -164,6 +164,46 @@ class FileWalkerTest {
         }
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shouldIgnoreOsJunkFolder(String name, Configuration configuration) throws IOException {
+        // given a root dir and sub dirs with files and some junk files
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path tempDir = jimfs.createTempDirectory();
+            final Path rootPath = tempDir.resolve("root");
+            final Path nested = rootPath.resolve(".fseventsd");
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("bs.png"));
+            Files.createFile(rootPath.resolve("abc.png"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            List<ScannedFile> files = walker.walk(rootPath);
+
+            // then we don't include the OS' junk files
+            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("abc.png");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void walksFilesystemRoot(String name, Configuration configuration) throws IOException {
+        // given a system root dir with a file
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+
+            Files.createFile(rootPath.resolve("abc.png"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            List<ScannedFile> files = walker.walk(rootPath);
+
+            // then we still have the correct file without throwing
+            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("abc.png");
+        }
+    }
+
     private void createJunkFiles(List<Path> paths) throws IOException {
         for (Path path : paths) {
             for (String junkFileName : OS_JUNK_FILES) {

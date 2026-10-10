@@ -37,7 +37,7 @@ class IgnoreJunkVisitor extends SimpleFileVisitor<Path> {
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
         if (attrs.isRegularFile() && !JunkFilter.isJunk(file)) {
             this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file)));
-        } else if (attrs.isRegularFile() && JunkFilter.isJunk(file)) {
+        } else {
             this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(this.rootPath, file)));
         }
 

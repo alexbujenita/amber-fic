@@ -272,6 +272,40 @@ class FileWalkerTest {
         }
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shoudlIncludeIgnoredEntriesSymlinks(String name, Configuration configuration) throws IOException {
+        // given a system root dir with a file and some symlinks
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("holiday");
+
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("yo.gif"));
+            Files.createFile(nested.resolve("Jo.xls"));
+
+            // valid
+            Files.createSymbolicLink(nested.resolve("Mama.xls"), nested.resolve("Jo.xls"));
+            // invalid
+            Files.createSymbolicLink(nested.resolve("broken.gif"), nested.resolve("nothing_here.asm"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(rootPath);
+
+            // then we have the correct file and the correct ignored entry
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+            assertThat(scannedResults)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly("holiday/Jo.xls", "holiday/yo.gif");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder("holiday/Mama.xls", "holiday/broken.gif");
+        }
+    }
+
     private void createJunkFiles(List<Path> paths) throws IOException {
         for (Path path : paths) {
             for (String junkFileName : OS_JUNK_FILES) {

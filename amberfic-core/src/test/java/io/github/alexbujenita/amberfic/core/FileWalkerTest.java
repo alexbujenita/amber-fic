@@ -306,6 +306,37 @@ class FileWalkerTest {
         }
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shouldIgnoreProgramGeneratedChecksum(String name, Configuration configuration) throws IOException {
+        // given a system root dir with some files and a final generated checksum
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("photo.jpg"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha512"));
+            Files.createFile(nested.resolve("notes.sha512"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested);
+
+            // then we have the correct files and the ignored generated checksum
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly("notes.sha512", "photo.jpg");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactly("amberfic_checksum.sha512");
+        }
+    }
+
     private void createJunkFiles(List<Path> paths) throws IOException {
         for (Path path : paths) {
             for (String junkFileName : OS_JUNK_FILES) {

@@ -10,10 +10,12 @@ import java.util.List;
 class IgnoreJunkVisitor extends SimpleFileVisitor<Path> {
 
     private final List<ScannedFile> scannedFiles;
+    private final List<IgnoredEntry> ignoredEntries;
     private final Path rootPath;
 
-    public IgnoreJunkVisitor(List<ScannedFile> scannedFiles, Path rootPath) {
+    public IgnoreJunkVisitor(List<ScannedFile> scannedFiles, List<IgnoredEntry> ignoredEntries, Path rootPath) {
         this.scannedFiles = scannedFiles;
+        this.ignoredEntries = ignoredEntries;
         this.rootPath = rootPath;
     }
 
@@ -25,6 +27,7 @@ class IgnoreJunkVisitor extends SimpleFileVisitor<Path> {
             return FileVisitResult.CONTINUE;
         }
         if (JunkFilter.isJunkFolder(dirName)) {
+            this.ignoredEntries.add(new IgnoredEntry(dir, getStandardizedPath(this.rootPath, dir)));
             return FileVisitResult.SKIP_SUBTREE;
         }
         return FileVisitResult.CONTINUE;
@@ -34,6 +37,8 @@ class IgnoreJunkVisitor extends SimpleFileVisitor<Path> {
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
         if (attrs.isRegularFile() && !JunkFilter.isJunk(file)) {
             this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file)));
+        } else if (attrs.isRegularFile() && JunkFilter.isJunk(file)) {
+            this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(this.rootPath, file)));
         }
 
         return FileVisitResult.CONTINUE;

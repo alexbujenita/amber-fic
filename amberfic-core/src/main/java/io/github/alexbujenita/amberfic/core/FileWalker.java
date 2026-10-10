@@ -12,10 +12,12 @@ final class FileWalker {
     private static final Comparator<ScannedFile> COMPARE_FILE_NAMES =
             Comparator.comparing(ScannedFile::relativeName, String::compareTo);
 
-    List<ScannedFile> walk(Path path) throws IOException {
+    Results walk(Path path) throws IOException {
         List<ScannedFile> scannedFiles = new ArrayList<>();
-        Files.walkFileTree(path, new IgnoreJunkVisitor(scannedFiles, path));
+        List<IgnoredEntry> ignoredEntries = new ArrayList<>();
+        Files.walkFileTree(path, new IgnoreJunkVisitor(scannedFiles, ignoredEntries, path));
         scannedFiles.sort(COMPARE_FILE_NAMES);
-        return scannedFiles;
+
+        return new Results(scannedFiles, ignoredEntries);
     }
 }

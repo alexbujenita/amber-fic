@@ -57,11 +57,12 @@ class FileWalkerTest {
         final FileWalker walker = new FileWalker();
 
         // when we walk al the dirs
-        List<ScannedFile> files = walker.walk(rootPath);
+        Results results = walker.walk(rootPath);
 
         // then we collect all the files with their relative name from the root dir
+        final List<ScannedFile> scannedResults = results.scannedFiles();
         final String expectedRelativeFileName = nested.getFileName().toString() + "/" + nestedFileName;
-        assertThat(files)
+        assertThat(scannedResults)
                 .isNotNull()
                 .extracting(ScannedFile::relativeName)
                 .containsExactlyInAnyOrder(raFileName, expectedRelativeFileName);
@@ -85,10 +86,14 @@ class FileWalkerTest {
             final FileWalker walker = new FileWalker();
 
             // when we walk all the dirs
-            List<ScannedFile> files = walker.walk(rootPath);
+            final Results results = walker.walk(rootPath);
 
             // then we only get the real file
-            assertThat(files).isNotNull().extracting(ScannedFile::relativeName).containsExactlyInAnyOrder(fileName);
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            assertThat(scannedResults)
+                    .isNotNull()
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactlyInAnyOrder(fileName);
         }
     }
 
@@ -129,10 +134,11 @@ class FileWalkerTest {
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
-            List<ScannedFile> files = walker.walk(rootPath);
+            final Results results = walker.walk(rootPath);
 
             // then the files are sorted in alphabetic order
-            assertThat(files)
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            assertThat(scannedResults)
                     .extracting(ScannedFile::relativeName)
                     .containsExactly("a.png", "a/abc.png", "a/z.png", "b.png");
         }
@@ -157,10 +163,13 @@ class FileWalkerTest {
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
-            List<ScannedFile> files = walker.walk(rootPath);
+            final Results results = walker.walk(rootPath);
 
             // then we don't include the OS' junk files
-            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("a/z.png", "b.png", "keep_me.db");
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            assertThat(scannedResults)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly("a/z.png", "b.png", "keep_me.db");
         }
     }
 
@@ -179,10 +188,11 @@ class FileWalkerTest {
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
-            List<ScannedFile> files = walker.walk(rootPath);
+            final Results results = walker.walk(rootPath);
 
             // then we don't include the OS' junk files
-            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("abc.png");
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("abc.png");
         }
     }
 
@@ -197,10 +207,68 @@ class FileWalkerTest {
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
-            List<ScannedFile> files = walker.walk(rootPath);
+            final Results results = walker.walk(rootPath);
 
             // then we still have the correct file without throwing
-            assertThat(files).extracting(ScannedFile::relativeName).containsExactly("abc.png");
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("abc.png");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shoudlIncludeIgnoredEntriesFolders(String name, Configuration configuration) throws IOException {
+        // given a system root dir with a file and an ignored dir
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("holiday");
+            final Path junkFolder = nested.resolve(".fseventsd");
+            final Path nestedInJunkFolder = junkFolder.resolve("party");
+
+            Files.createFile(rootPath.resolve("photo.png"));
+            Files.createDirectories(nestedInJunkFolder);
+            Files.createFile(junkFolder.resolve("ghost.png"));
+            Files.createFile(nestedInJunkFolder.resolve("ignored_again.txt"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(rootPath);
+
+            // then we have the correct file and the correct ignored entry, we don't count anything since we don't
+            // traverse it
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("photo.png");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder("holiday/.fseventsd");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
+    void shoudlIncludeIgnoredEntriesFiles(String name, Configuration configuration) throws IOException {
+        // given a system root dir with a file and an ignored file
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("holiday");
+
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("notes.db"));
+            Files.createFile(nested.resolve("Thumbs.db"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(rootPath);
+
+            // then we have the correct file and the correct ignored entry
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("holiday/notes.db");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder("holiday/Thumbs.db");
         }
     }
 

@@ -247,6 +247,38 @@ class FileWalkerTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("osFsProvider")
+    void shoudlIncludeIgnoredSysFolders(String name, Configuration configuration) throws IOException {
+        // given a system root dir with a file and system dirs
+        try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
+            final Path rootPath = jimfs.root;
+            final String[] sysDirs = {".Spotlight-V100", ".Trashes", "System Volume Information", "$RECYCLE.BIN"};
+
+            for (String sysDir : sysDirs) {
+                Path junk = rootPath.resolve(sysDir);
+                Files.createDirectories(junk);
+                Files.createFile(junk.resolve("cant_be_seen.jpg"));
+            }
+
+            Files.createFile(rootPath.resolve("photo.png"));
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(rootPath);
+
+            // then we have the correct file and the correct ignored entry, we don't count anything since we don't
+            // traverse it
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("photo.png");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder(
+                            ".Spotlight-V100", ".Trashes", "System Volume Information", "$RECYCLE.BIN");
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("osFsProvider")
     void shoudlIncludeIgnoredEntriesFiles(String name, Configuration configuration) throws IOException {
         // given a system root dir with a file and an ignored file
         try (final JimfsFixture jimfs = new JimfsFixture(configuration)) {
@@ -319,6 +351,15 @@ class FileWalkerTest {
             Files.createFile(nested.resolve("photo.jpg"));
             Files.createFile(nested.resolve("amberfic_checksum.sha512"));
             Files.createFile(nested.resolve("notes.sha512"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha512.tmp"));
+            Files.createFile(nested.resolve("notes.tmp"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha512.bak"));
+            Files.createFile(nested.resolve("notes.bak"));
+
+            Files.createFile(nested.resolve("notes.sha256"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha256"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha256.tmp"));
+            Files.createFile(nested.resolve("amberfic_checksum.sha256.bak"));
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
@@ -330,10 +371,16 @@ class FileWalkerTest {
 
             assertThat(scannedResults)
                     .extracting(ScannedFile::relativeName)
-                    .containsExactly("notes.sha512", "photo.jpg");
+                    .containsExactly("notes.bak", "notes.sha256", "notes.sha512", "notes.tmp", "photo.jpg");
             assertThat(ignoredEntries)
                     .extracting(IgnoredEntry::relativeName)
-                    .containsExactly("amberfic_checksum.sha512");
+                    .containsExactlyInAnyOrder(
+                            "amberfic_checksum.sha512",
+                            "amberfic_checksum.sha512.tmp",
+                            "amberfic_checksum.sha512.bak",
+                            "amberfic_checksum.sha256",
+                            "amberfic_checksum.sha256.tmp",
+                            "amberfic_checksum.sha256.bak");
         }
     }
 

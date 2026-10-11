@@ -11,10 +11,7 @@ final class JunkFilter {
     }
 
     private static final Set<String> JUNK_DIRS = Set.of(
-            // macos
-            ".fseventsd",
-            // linux
-            ".directory");
+            ".fseventsd", ".directory", ".Spotlight-V100", ".Trashes", "System Volume Information", "$RECYCLE.BIN");
     private static final Set<String> JUNK_FILES = Set.of(
             // windows
             "Thumbs.db",
@@ -23,7 +20,13 @@ final class JunkFilter {
             "desktop.ini",
             // macos
             ".DS_Store");
-    private static final Set<String> PROGRAM_FILES = Set.of("amberfic_checksum.sha512");
+    private static final Set<String> PROGRAM_FILES = Set.of(
+            "amberfic_checksum.sha512",
+            "amberfic_checksum.sha512.tmp",
+            "amberfic_checksum.sha512.bak",
+            "amberfic_checksum.sha256",
+            "amberfic_checksum.sha256.tmp",
+            "amberfic_checksum.sha256.bak");
     private static final Set<String> JUNK = Stream.of(JUNK_DIRS, JUNK_FILES, PROGRAM_FILES)
             .flatMap(Set::stream)
             .collect(Collectors.toUnmodifiableSet());

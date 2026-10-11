@@ -12,6 +12,12 @@ final class FileWalker {
     private static final Comparator<ScannedFile> COMPARE_FILE_NAMES =
             Comparator.comparing(ScannedFile::relativeName, String::compareTo);
 
+    /**
+     * Traverses the root path provided.
+     * @param path The root path where we start traversing
+     * @return a results object containing files to hash and an ignored list if needed for display
+     * @throws IOException Mostly OS and FS errors
+     */
     Results walk(Path path) throws IOException {
         return this.walk(path, false);
     }

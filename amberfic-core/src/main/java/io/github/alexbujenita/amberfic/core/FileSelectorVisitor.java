@@ -20,7 +20,7 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
     private final List<IgnoredEntry> ignoredEntries;
     /** The path from where we start the scan */
     private final Path rootPath;
-    /** If this is true, hidden folders will be traversed and hidden files will be reported for hashing */
+    /** If this is true, hidden folders will be traversed and hidden files will be reported for hashing. Junk files and dirs are still ignored */
     private final boolean includeHidden;
 
     public FileSelectorVisitor(
@@ -54,7 +54,7 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        if (shouldIgnoreFile(file, attrs)) {
+        if (shouldKeepFile(file, attrs)) {
             this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file)));
         } else {
             this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(this.rootPath, file)));
@@ -63,7 +63,7 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
         return FileVisitResult.CONTINUE;
     }
 
-    private boolean shouldIgnoreFile(Path file, BasicFileAttributes attrs) throws IOException {
+    private boolean shouldKeepFile(Path file, BasicFileAttributes attrs) throws IOException {
         if (this.includeHidden) {
             return attrs.isRegularFile() && !JunkFilter.isJunk(file);
         }

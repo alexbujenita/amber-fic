@@ -32,7 +32,6 @@ final class JunkFilter {
             .collect(Collectors.toUnmodifiableSet());
     private static final String APPLE_DOUBLE_PREFIX = "._";
 
-    // TODO rename!?
     static boolean isJunk(Path file) {
         final String fileName = file.getFileName().toString();
         return JUNK.contains(fileName) || (fileName.startsWith(APPLE_DOUBLE_PREFIX));

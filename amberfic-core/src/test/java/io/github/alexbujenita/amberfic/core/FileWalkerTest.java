@@ -238,8 +238,7 @@ class FileWalkerTest {
             final FileWalker walker = new FileWalker();
             final Results results = walker.walk(rootPath);
 
-            // then we have the correct file and the correct ignored entry, we don't count anything since we don't
-            // traverse it
+            // then we have the correct file and the correct ignored entry
             final List<ScannedFile> scannedResults = results.scannedFiles();
             final List<IgnoredEntry> ignoredEntries = results.ignored();
             assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("photo.png");
@@ -269,8 +268,7 @@ class FileWalkerTest {
             final FileWalker walker = new FileWalker();
             final Results results = walker.walk(rootPath);
 
-            // then we have the correct file and the correct ignored entry, we don't count anything since we don't
-            // traverse it
+            // then we have the correct file and the correct ignored entry
             final List<ScannedFile> scannedResults = results.scannedFiles();
             final List<IgnoredEntry> ignoredEntries = results.ignored();
             assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("photo.png");
@@ -528,7 +526,7 @@ class FileWalkerTest {
 
     @Test
     void hiddenFilesAreFoundInHiddenDirsWithFlag_Windows() throws IOException {
-        // Given a root directory and 2 files, 1 hidden
+        // Given a root directory and some hidden folders and files
         try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
             final Path rootPath = jimfs.root;
             final Path nested = rootPath.resolve("photos");

@@ -384,6 +384,30 @@ class FileWalkerTest {
         }
     }
 
+    //    @ParameterizedTest(name = "{0}")
+    //    @MethodSource("osFsProvider")
+    @Test
+    void fileNamesNormalised() throws IOException {
+        // given a root dir and sub dirs with files
+        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+            final Path rootPath = jimfs.root;
+
+            Path caffe = rootPath.resolve("cafe\u0301.jpg");
+
+            Files.createFile(caffe);
+
+            // when we walk all the dirs
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(rootPath);
+
+            // then the files are sorted in alphabetic order
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+
+            assertThat(scannedResults).extracting(ScannedFile::path).containsExactly(caffe);
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("caf\u00E9.jpg");
+        }
+    }
+
     private void createJunkFiles(List<Path> paths) throws IOException {
         for (Path path : paths) {
             for (String junkFileName : OS_JUNK_FILES) {

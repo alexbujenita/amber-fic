@@ -4,6 +4,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.Normalizer;
 import java.util.List;
 
 // TODO: rename this once it has more functionality
@@ -60,6 +61,7 @@ class IgnoreJunkVisitor extends SimpleFileVisitor<Path> {
             }
             fullPath.append(component);
         }
-        return fullPath.toString();
+
+        return Normalizer.normalize(fullPath.toString(), Normalizer.Form.NFC);
     }
 }

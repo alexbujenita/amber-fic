@@ -384,11 +384,122 @@ class FileWalkerTest {
         }
     }
 
-    //    @ParameterizedTest(name = "{0}")
-    //    @MethodSource("osFsProvider")
+    @Test
+    void hiddenFilesAreIgnored() throws IOException {
+        // Given a root directory and 2 files, 1 hidden
+        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            Files.createFile(nested.resolve(".notes.txt"));
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested);
+
+            // Then the scanned results contain the normal file and the ignored hidden file
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("IMG_001.jpg");
+            assertThat(ignoredEntries).extracting(IgnoredEntry::relativeName).containsExactlyInAnyOrder(".notes.txt");
+        }
+    }
+
+    @Test
+    void hiddenFilesAreIgnored_Windows() throws IOException {
+        // Given a root directory and 2 files, 1 hidden
+        Configuration windowsConfig = Configuration.windows().toBuilder()
+                .setAttributeViews("basic", "dos")
+                .build();
+        try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            final Path toBeHidden = nested.resolve("notes.txt");
+            Files.createDirectories(nested);
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            Files.createFile(toBeHidden);
+
+            Files.setAttribute(toBeHidden, "dos:hidden", true);
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested);
+
+            // Then the scanned results contain the normal file and the ignored hidden file
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("IMG_001.jpg");
+            assertThat(ignoredEntries).extracting(IgnoredEntry::relativeName).containsExactlyInAnyOrder("notes.txt");
+        }
+    }
+
+    @Test
+    void hiddenDirsAreIgnored() throws IOException {
+        // Given a root directory and 1 file, 1 hidden dir with random stuff
+        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            Files.createDirectories(nested);
+            final Path hiddenDir = Files.createDirectories(nested.resolve(".archive"));
+            final Path normalInHiddenDir = Files.createDirectories(hiddenDir.resolve("normalInHidden"));
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            Files.createFile(normalInHiddenDir.resolve("hello.txt"));
+            Files.createFile(hiddenDir.resolve("something.txt"));
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested);
+
+            // Then the scanned results contain the normal file and the ignored hidden dir
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("IMG_001.jpg");
+            assertThat(ignoredEntries).extracting(IgnoredEntry::relativeName).containsExactlyInAnyOrder(".archive");
+        }
+    }
+
+    @Test
+    void hiddenDirsAreIgnored_Windows() throws IOException {
+        // Given a root directory and 1 file, 1 hidden dir with random stuff (Windows)
+        Configuration windowsConfig = Configuration.windows().toBuilder()
+                .setAttributeViews("basic", "dos")
+                .build();
+        try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            Files.createDirectories(nested);
+            final Path hiddenDir = Files.createDirectories(nested.resolve("archive"));
+            final Path normalInHiddenDir = Files.createDirectories(hiddenDir.resolve("normalInHidden"));
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            Files.createFile(normalInHiddenDir.resolve("hello.txt"));
+            Files.createFile(hiddenDir.resolve("something.txt"));
+
+            Files.setAttribute(hiddenDir, "dos:hidden", true);
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested);
+
+            // Then the scanned results contain the normal file and the ignored hidden folder/dir
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("IMG_001.jpg");
+            assertThat(ignoredEntries).extracting(IgnoredEntry::relativeName).containsExactlyInAnyOrder("archive");
+        }
+    }
+
     @Test
     void fileNamesNormalised() throws IOException {
-        // given a root dir and sub dirs with files
+        // Given a root directory and a file using NFD (Decomposed) Unicode for the accented 'é' character (café)
         try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
             final Path rootPath = jimfs.root;
 
@@ -396,11 +507,11 @@ class FileWalkerTest {
 
             Files.createFile(caffe);
 
-            // when we walk all the dirs
+            // when we walk the dir
             final FileWalker walker = new FileWalker();
             final Results results = walker.walk(rootPath);
 
-            // then the files are sorted in alphabetic order
+            // Then the scanned results contain the path and the normalized NFC filename (café.jpg)
             final List<ScannedFile> scannedResults = results.scannedFiles();
 
             assertThat(scannedResults).extracting(ScannedFile::path).containsExactly(caffe);

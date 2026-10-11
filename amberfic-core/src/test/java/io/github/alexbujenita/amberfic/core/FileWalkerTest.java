@@ -21,7 +21,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class FileWalkerTest {
 
-    public static String[] OS_JUNK_FILES = {
+    static String[] OS_JUNK_FILES = {
         ".DS_Store",
         ".fseventsd",
         "Thumbs.db",
@@ -32,7 +32,11 @@ class FileWalkerTest {
         "._z.png"
     };
 
-    public static Stream<Arguments> osFsProvider() {
+    static Configuration windowsConfig = Configuration.windows().toBuilder()
+            .setAttributeViews("basic", "dos")
+            .build();
+
+    static Stream<Arguments> osFsProvider() {
         return Stream.of(
                 arguments("MacOS", Configuration.osX()),
                 arguments("UNIX", Configuration.unix()),
@@ -411,9 +415,6 @@ class FileWalkerTest {
     @Test
     void hiddenFilesAreIgnored_Windows() throws IOException {
         // Given a root directory and 2 files, 1 hidden
-        Configuration windowsConfig = Configuration.windows().toBuilder()
-                .setAttributeViews("basic", "dos")
-                .build();
         try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
             final Path rootPath = jimfs.root;
             final Path nested = rootPath.resolve("photos");
@@ -468,9 +469,6 @@ class FileWalkerTest {
     @Test
     void hiddenDirsAreIgnored_Windows() throws IOException {
         // Given a root directory and 1 file, 1 hidden dir with random stuff (Windows)
-        Configuration windowsConfig = Configuration.windows().toBuilder()
-                .setAttributeViews("basic", "dos")
-                .build();
         try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
             final Path rootPath = jimfs.root;
             final Path nested = rootPath.resolve("photos");
@@ -494,6 +492,71 @@ class FileWalkerTest {
 
             assertThat(scannedResults).extracting(ScannedFile::relativeName).containsExactly("IMG_001.jpg");
             assertThat(ignoredEntries).extracting(IgnoredEntry::relativeName).containsExactlyInAnyOrder("archive");
+        }
+    }
+
+    @Test
+    void hiddenFilesAreFoundInHiddenDirsWithFlag() throws IOException {
+        // Given a root directory and some hidden folders and files
+        try (final JimfsFixture jimfs = new JimfsFixture(Configuration.unix())) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            final Path hiddenDir = Files.createDirectories(nested.resolve(".archive"));
+            Files.createDirectories(hiddenDir);
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            Files.createFile(hiddenDir.resolve(".notes.txt"));
+            Files.createFile(hiddenDir.resolve("not_hidden.txt"));
+            Files.createFile(hiddenDir.resolve(".DS_Store"));
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested, true);
+
+            // Then the scanned results contains all files but still ignores junk files
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly(".archive/.notes.txt", ".archive/not_hidden.txt", "IMG_001.jpg");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder(".archive/.DS_Store");
+        }
+    }
+
+    @Test
+    void hiddenFilesAreFoundInHiddenDirsWithFlag_Windows() throws IOException {
+        // Given a root directory and 2 files, 1 hidden
+        try (final JimfsFixture jimfs = new JimfsFixture(windowsConfig)) {
+            final Path rootPath = jimfs.root;
+            final Path nested = rootPath.resolve("photos");
+            final Path hiddenDir = Files.createDirectories(nested.resolve(".archive"));
+            Files.createDirectories(hiddenDir);
+
+            Files.createFile(nested.resolve("IMG_001.jpg"));
+            final Path hiddenFile = Files.createFile(hiddenDir.resolve("notes.txt"));
+            Files.createFile(hiddenDir.resolve("not_hidden.txt"));
+            Files.createFile(hiddenDir.resolve(".DS_Store"));
+
+            Files.setAttribute(hiddenDir, "dos:hidden", true);
+            Files.setAttribute(hiddenFile, "dos:hidden", true);
+
+            // when we walk the dir
+            final FileWalker walker = new FileWalker();
+            final Results results = walker.walk(nested, true);
+
+            // Then the scanned results contains all files but still ignores junk files
+            final List<ScannedFile> scannedResults = results.scannedFiles();
+            final List<IgnoredEntry> ignoredEntries = results.ignored();
+
+            assertThat(scannedResults)
+                    .extracting(ScannedFile::relativeName)
+                    .containsExactly(".archive/not_hidden.txt", ".archive/notes.txt", "IMG_001.jpg");
+            assertThat(ignoredEntries)
+                    .extracting(IgnoredEntry::relativeName)
+                    .containsExactlyInAnyOrder(".archive/.DS_Store");
         }
     }
 

@@ -13,9 +13,13 @@ final class FileWalker {
             Comparator.comparing(ScannedFile::relativeName, String::compareTo);
 
     Results walk(Path path) throws IOException {
+        return this.walk(path, false);
+    }
+
+    Results walk(Path path, boolean includeHidden) throws IOException {
         List<ScannedFile> scannedFiles = new ArrayList<>();
         List<IgnoredEntry> ignoredEntries = new ArrayList<>();
-        Files.walkFileTree(path, new IgnoreJunkVisitor(scannedFiles, ignoredEntries, path));
+        Files.walkFileTree(path, new FileSelectorVisitor(scannedFiles, ignoredEntries, path, includeHidden));
         scannedFiles.sort(COMPARE_FILE_NAMES);
 
         return new Results(scannedFiles, ignoredEntries);

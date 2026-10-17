@@ -7,6 +7,7 @@ import static org.assertj.core.api.BDDAssertions.thenCode;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -50,6 +51,24 @@ class ChecksumReaderTest {
         // then we have the correct list returned
         assertThat(checksumEntries).extracting(ChecksumEntry::filePath).containsExactly("caf\u00E9.png");
         assertThat(checksumEntries).extracting(ChecksumEntry::hash).containsExactly("hash_123");
+    }
+
+    @Test
+    void correctlyReadsChecksumGeneratedByOtherTools() throws IOException, URISyntaxException {
+        // given a checksum file generated with `shasum -a 512 external_sha512.txt > amberfic_checksum.sha512`
+        ClassLoader classLoader = getClass().getClassLoader();
+        Path file = Path.of(classLoader.getResource("amberfic_checksum.sha512").toURI());
+
+        // when we call the checksumReader
+        final ChecksumReader checksumReader = new ChecksumReader();
+        final List<ChecksumEntry> checksumEntries = checksumReader.parseChecksum(file);
+
+        // then we have the correct list returned
+        assertThat(checksumEntries).extracting(ChecksumEntry::filePath).containsExactly("external_sha512.txt");
+        assertThat(checksumEntries)
+                .extracting(ChecksumEntry::hash)
+                .containsExactly(
+                        "30828df258f0f01ca423a681121a9d4405082158bb998c0b95780c2a64dc9461f78c730df0e261e36b801a4728fa808391746ce16c6530162f9a67e2ff48afd0");
     }
 
     @Test

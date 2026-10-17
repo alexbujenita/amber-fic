@@ -25,10 +25,29 @@ class ChecksumReader {
         return List.copyOf(checksumEntries);
     }
 
-    List<ChecksumEntry> parseChecksum(Path path) throws IOException {
+    ChecksumManifest parseChecksum(Path path) throws IOException {
+        final HashAlgorithm algorithm = extractAlgorithm(path);
         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-            return parseChecksum(reader);
+            final List<ChecksumEntry> checksumEntries = parseChecksum(reader);
+            return new ChecksumManifest(checksumEntries, algorithm);
         }
+    }
+
+    private HashAlgorithm extractAlgorithm(Path path) throws IOException {
+        final String fileExtension = getFileExtension(path.getFileName().toString());
+        try {
+            return HashAlgorithm.valueOf(fileExtension.toUpperCase());
+        } catch (IllegalArgumentException _) {
+            throw new IOException("Invalid hash algorithm: " + fileExtension);
+        }
+    }
+
+    private String getFileExtension(String filename) throws IOException {
+        int dotIndex = filename.lastIndexOf(".");
+        if (dotIndex >= 0) {
+            return filename.substring(dotIndex + 1);
+        }
+        throw new IOException("Missing file extension: " + filename);
     }
 
     private void addChecksumToList(String line, List<ChecksumEntry> checksumEntries, int currentLineNumber)

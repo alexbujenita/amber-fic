@@ -1,5 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
+import static io.github.alexbujenita.amberfic.core.HashAlgorithm.SHA512;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.BDDAssertions.thenCode;
@@ -14,6 +15,8 @@ import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class ChecksumReaderTest {
 
@@ -61,7 +64,8 @@ class ChecksumReaderTest {
 
         // when we call the checksumReader
         final ChecksumReader checksumReader = new ChecksumReader();
-        final List<ChecksumEntry> checksumEntries = checksumReader.parseChecksum(file);
+        final ChecksumManifest manifest = checksumReader.parseChecksum(file);
+        final List<ChecksumEntry> checksumEntries = manifest.entries();
 
         // then we have the correct list returned
         assertThat(checksumEntries).extracting(ChecksumEntry::filePath).containsExactly("external_sha512.txt");
@@ -89,7 +93,7 @@ class ChecksumReaderTest {
     }
 
     @Test
-    void returnsAListOfChecksumsFromAFile(@TempDir Path path) throws IOException {
+    void returnsAListOfChecksumsFromAFileAndTheCorrectAlgorithm(@TempDir Path path) throws IOException {
         // given a file with some checksum results
         final Path checksumFile = Files.createFile(path.resolve("checksum.sha512"));
         final String entries = """
@@ -103,11 +107,77 @@ class ChecksumReaderTest {
 
         // when we call the checksumReader
         final ChecksumReader checksumReader = new ChecksumReader();
-        final List<ChecksumEntry> checksumEntries = checksumReader.parseChecksum(checksumFile);
+        final ChecksumManifest manifest = checksumReader.parseChecksum(checksumFile);
+        final List<ChecksumEntry> checksumEntries = manifest.entries();
+        final HashAlgorithm algorithm = manifest.algorithm();
 
-        // then we have the correct list returned
+        // then we have the correct list returned and the correct algorithm used
         assertThat(checksumEntries).extracting(ChecksumEntry::filePath).containsExactly("sub/b.png", "a.png");
         assertThat(checksumEntries).extracting(ChecksumEntry::hash).containsExactly("hash_123", "hash_456");
+        assertThat(algorithm).isEqualTo(SHA512);
+    }
+
+    @ParameterizedTest(name = "Has correct algorithm: {1}")
+    @CsvSource({"checksum.sha512,    SHA512", "checksum.sha256,    SHA256"})
+    void hasTheCorrectAlgorithm(String fileName, String expectedAlgorithm, @TempDir Path path) throws IOException {
+        // given a file with some checksum results
+        final Path checksumFile = Files.createFile(path.resolve(fileName));
+        final String entries = """
+                hash_123  sub/b.png
+                hash_456  a.png
+                """;
+
+        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+            writer.write(entries);
+        }
+
+        // when we call the checksumReader
+        final ChecksumReader checksumReader = new ChecksumReader();
+        final ChecksumManifest manifest = checksumReader.parseChecksum(checksumFile);
+        final HashAlgorithm algorithm = manifest.algorithm();
+
+        // then we have the correct algorithm detected
+        assertThat(algorithm).isEqualTo(HashAlgorithm.valueOf(expectedAlgorithm));
+    }
+
+    @Test
+    void throwsWhenNoAlgorithmIsFound(@TempDir Path path) throws IOException {
+        // given a file with a non-existing algo with some checksum results
+        final Path checksumFile = Files.createFile(path.resolve("checksum.sha883"));
+        final String entries = """
+                hash_123  sub/b.png
+                hash_456  a.png
+                """;
+
+        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+            writer.write(entries);
+        }
+
+        // when we call the checksumReader then an error is thrown
+        final ChecksumReader checksumReader = new ChecksumReader();
+        assertThatThrownBy(() -> checksumReader.parseChecksum(checksumFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("sha883");
+    }
+
+    @Test
+    void throwsWhenNoFileExtensionIsFound(@TempDir Path path) throws IOException {
+        // given a file without an extension
+        final Path checksumFile = Files.createFile(path.resolve("checksum_maybe"));
+        final String entries = """
+                hash_123  sub/b.png
+                hash_456  a.png
+                """;
+
+        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+            writer.write(entries);
+        }
+
+        // when we call the checksumReader then an error is thrown
+        final ChecksumReader checksumReader = new ChecksumReader();
+        assertThatThrownBy(() -> checksumReader.parseChecksum(checksumFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("checksum_maybe");
     }
 
     @Test

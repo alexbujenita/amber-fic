@@ -14,11 +14,12 @@ class ChecksumReader {
     private static final String TWO_SPACES = " {2}";
 
     List<ChecksumEntry> parseChecksum(Reader reader) throws IOException {
+        int currentLineNumber = 0;
         final List<ChecksumEntry> checksumEntries = new ArrayList<>();
         String line;
         BufferedReader br = new BufferedReader(reader);
         while ((line = br.readLine()) != null) {
-            addChecksumToList(line, checksumEntries);
+            addChecksumToList(line, checksumEntries, ++currentLineNumber);
         }
 
         return List.copyOf(checksumEntries);
@@ -30,8 +31,12 @@ class ChecksumReader {
         }
     }
 
-    private void addChecksumToList(String line, List<ChecksumEntry> checksumEntries) {
+    private void addChecksumToList(String line, List<ChecksumEntry> checksumEntries, int currentLineNumber)
+            throws IOException {
         String[] parts = line.split(TWO_SPACES, 2);
+        if (parts.length != 2 || parts[1].isEmpty()) {
+            throw new IOException("Error reading checksum file, check line %s.".formatted(currentLineNumber));
+        }
         checksumEntries.add(new ChecksumEntry(parts[0], parts[1]));
     }
 }

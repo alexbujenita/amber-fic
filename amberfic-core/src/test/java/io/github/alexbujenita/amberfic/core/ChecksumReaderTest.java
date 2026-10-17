@@ -111,6 +111,43 @@ class ChecksumReaderTest {
     }
 
     @Test
+    void throwsWithMalformedChecksum(@TempDir Path path) throws IOException {
+        // given a file with some broken checksum results
+        final Path checksumFile = Files.createFile(path.resolve("checksum.sha512"));
+        final String entries = """
+                hash_123  sub/b.png
+                broken
+                """;
+
+        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+            writer.write(entries);
+        }
+
+        // when we call the checksumReader then an exception is thrown
+        final ChecksumReader checksumReader = new ChecksumReader();
+        assertThatThrownBy(() -> checksumReader.parseChecksum(checksumFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("line 2");
+    }
+
+    @Test
+    void rejectsEntriesWithEmptyFileName(@TempDir Path path) throws IOException {
+        // given a file with some broken checksum results
+        final Path checksumFile = Files.createFile(path.resolve("checksum.sha512"));
+        final String entries = "hash_123  a.png\nhash_456  \n";
+
+        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+            writer.write(entries);
+        }
+
+        // Expecting code to raise a throwable.
+        final ChecksumReader checksumReader = new ChecksumReader();
+        assertThatThrownBy(() -> checksumReader.parseChecksum(checksumFile))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("line 2");
+    }
+
+    @Test
     void returnsAListOfChecksumsDifferentEveryTime() throws IOException {
         // given a string of entries
         final String entry1 = "hash_123  sub/b.png";
@@ -132,7 +169,7 @@ class ChecksumReaderTest {
     }
 
     @Test
-    void throwsIfTheFileDoesntExist(@TempDir Path path) throws IOException {
+    void throwsIfTheFileDoesntExist(@TempDir Path path) {
 
         // given / when we call the checksumReader with a missing file
         final ChecksumReader checksumReader = new ChecksumReader();

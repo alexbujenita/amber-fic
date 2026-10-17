@@ -3,10 +3,15 @@ package io.github.alexbujenita.amberfic.core;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 class ChecksumReader {
+
+    private static final String TWO_SPACES = " {2}";
 
     List<ChecksumEntry> parseChecksum(Reader reader) throws IOException {
         final List<ChecksumEntry> checksumEntries = new ArrayList<>();
@@ -19,8 +24,14 @@ class ChecksumReader {
         return List.copyOf(checksumEntries);
     }
 
+    List<ChecksumEntry> parseChecksum(Path path) throws IOException {
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            return parseChecksum(reader);
+        }
+    }
+
     private void addChecksumToList(String line, List<ChecksumEntry> checksumEntries) {
-        String[] parts = line.split(" {2}");
+        String[] parts = line.split(TWO_SPACES, 2);
         checksumEntries.add(new ChecksumEntry(parts[0], parts[1]));
     }
 }

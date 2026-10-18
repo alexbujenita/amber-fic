@@ -62,16 +62,17 @@ class ChecksumWriterTest {
         }
 
         // when we call the writer with write(Writer w) throwing
+        final IOException errorInWriting = new IOException("Error in writing");
         final ChecksumWriter checksumWriter = new ChecksumWriter(List.of(new ChecksumEntry("hash_123", "random.jpg"))) {
             @Override
             void write(Writer writer) throws IOException {
                 writer.write("writing...");
-                throw new IOException("Error in writing");
+                throw errorInWriting;
             }
         };
 
         // then it throws
-        assertThatThrownBy(() -> checksumWriter.write(checksumFile)).isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> checksumWriter.write(checksumFile)).isEqualTo(errorInWriting);
 
         // and the original file is unaffected
         assertThat(checksumFile).hasBinaryContent(entry.getBytes(StandardCharsets.UTF_8));
@@ -85,8 +86,9 @@ class ChecksumWriterTest {
 
     @Test
     void replacesExistingManifestWithoutLeavingTemporaryFiles(@TempDir Path path) throws IOException {
-        // given an existing checksum file
-        final Path checksumFile = Files.createFile(path.resolve("amberfic_checksum.sha512"));
+        // given an existing checksum file in a nested dir
+        Path nestedDir = Files.createDirectories(path.resolve("nested"));
+        final Path checksumFile = Files.createFile(nestedDir.resolve("amberfic_checksum.sha512"));
         final String entry = """
                 hash_456  a.png
                 hash_123  sub/b.png
@@ -98,17 +100,43 @@ class ChecksumWriterTest {
         }
 
         // when we call the writer
+        final Path relativeChecksumFile = Path.of("").toAbsolutePath().relativize(checksumFile);
         final ChecksumWriter checksumWriter = new ChecksumWriter(List.of(new ChecksumEntry("hash_xyz", "random.jpg")));
-        checksumWriter.write(checksumFile);
+        checksumWriter.write(relativeChecksumFile);
 
         // then the checksum file has the correct entries
         final String expected = "hash_xyz  random.jpg\n";
         assertThat(checksumFile).hasBinaryContent(expected.getBytes(StandardCharsets.UTF_8));
 
         // and no temporary file remains
-        try (Stream<Path> filesStream = Files.list(path)) {
+        try (Stream<Path> filesStream = Files.walk(path)) {
             List<Path> list = filesStream.toList();
-            assertThat(list).containsExactly(checksumFile);
+            assertThat(list).hasSize(3).contains(checksumFile);
+        }
+    }
+
+    @Test
+    void cleansUpTemporaryFileWhenMoveFails(@TempDir Path path) throws IOException {
+        // given a file in a dir
+        Path dir = Files.createDirectories(path.resolve("amberfic_checksum.sha512"));
+        final Path sentinelFile = Files.createFile(dir.resolve("file_must_be_protected_all_all_costs"));
+        final String entry = "nothing to see here\n";
+
+        try (BufferedWriter writer = Files.newBufferedWriter(sentinelFile)) {
+            writer.write(entry);
+        }
+
+        // when we call the writer, and it throws (passing a dir as destination)
+        final ChecksumWriter checksumWriter = new ChecksumWriter(List.of(new ChecksumEntry("hash_xyz", "random.jpg")));
+        assertThatThrownBy(() -> checksumWriter.write(dir)).isInstanceOf(IOException.class);
+
+        // then the check file is unchanged
+        assertThat(sentinelFile).hasBinaryContent(entry.getBytes(StandardCharsets.UTF_8));
+
+        // and no temporary file remains
+        try (Stream<Path> filesStream = Files.walk(path)) {
+            List<Path> list = filesStream.toList();
+            assertThat(list).hasSize(3).contains(sentinelFile);
         }
     }
 }

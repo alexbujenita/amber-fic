@@ -27,6 +27,9 @@ class IntegrityChecker {
                         new ChecksumEntry(hasher.hash(inputStream), fileToCheck.relativeName());
                 final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
                 addIntegrityResult(entryToCheck, manifestEntry);
+            } catch (final IOException e) {
+                this.integrityResults.clear();
+                throw e;
             }
         }
 

@@ -6,6 +6,4 @@ sealed interface IntegrityCheckResult {
     record Failed(String filePath) implements IntegrityCheckResult {}
 
     record MissingFromManifest(String filePath) implements IntegrityCheckResult {}
-
-    record MissingFromSource(String filePath) implements IntegrityCheckResult {}
 }

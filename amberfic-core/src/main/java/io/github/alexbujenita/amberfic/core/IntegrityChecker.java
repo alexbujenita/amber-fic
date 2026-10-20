@@ -3,7 +3,6 @@ package io.github.alexbujenita.amberfic.core;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,10 +21,7 @@ class IntegrityChecker {
 
     List<IntegrityCheckResult> calculateIntegrityResults() throws IOException {
         for (ScannedFile fileToCheck : scannedFiles) {
-            if (!Files.exists(fileToCheck.path(), LinkOption.NOFOLLOW_LINKS)) {
-                this.integrityResults.add(new IntegrityCheckResult.MissingFromSource(fileToCheck.relativeName()));
-                continue;
-            }
+
             try (InputStream inputStream = Files.newInputStream(fileToCheck.path())) {
                 final ChecksumEntry entryToCheck =
                         new ChecksumEntry(hasher.hash(inputStream), fileToCheck.relativeName());

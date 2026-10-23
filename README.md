@@ -14,6 +14,12 @@ on two USB sticks, looking at the USB sticks some photos would look corrupt.
 
 Wanted to have a more proactive approach, instead of going through all photos, hash them all and check from time to time.
 
+## Build
+
+```shell
+mvn verify
+```
+
 ## TODO
 
 A lot!

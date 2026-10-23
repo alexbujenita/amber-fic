@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 class IntegrityChecker {
     private final List<IntegrityCheckResult> integrityResults;
@@ -33,9 +35,25 @@ class IntegrityChecker {
             }
         }
 
+        addMissingFromScan(scannedFiles);
         List<IntegrityCheckResult> results = List.copyOf(this.integrityResults);
         this.integrityResults.clear();
         return results;
+    }
+
+    /**
+     * Checks and adds files that are present in the original manifest but are missing from the scanned source
+     * @param scannedFiles Files scanned from the source to check
+     */
+    private void addMissingFromScan(List<ScannedFile> scannedFiles) {
+        final List<String> manifestEntries =
+                this.manifest.entries().stream().map(ChecksumEntry::filePath).toList();
+        final Set<String> scannedEntries =
+                scannedFiles.stream().map(ScannedFile::relativeName).collect(Collectors.toSet());
+
+        manifestEntries.stream()
+                .filter(p -> !scannedEntries.contains(p))
+                .forEach(p -> this.integrityResults.add(new IntegrityCheckResult.MissingFromScan(p)));
     }
 
     private void addIntegrityResult(ChecksumEntry entryToCheck, ChecksumEntry manifestEntry) {

@@ -8,4 +8,6 @@ sealed interface IntegrityCheckResult {
     record MissingFromManifest(String filePath) implements IntegrityCheckResult {}
 
     record MissingFromScan(String filePath) implements IntegrityCheckResult {}
+
+    record Unreadable(String filePath) implements IntegrityCheckResult {}
 }

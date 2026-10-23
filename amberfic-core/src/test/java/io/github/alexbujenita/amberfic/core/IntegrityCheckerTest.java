@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class IntegrityCheckerTest {
 
+    static final String ABC_SHA_256 = "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78";
     static final String ABC_SHA_512 =
             "397118fdac8d83ad98813c50759c85b8c47565d8268bf10da483153b747a74743a58a90e85aa9f705ce6984ffc128db567489817e4092d050d8a1cc596ddc119";
     static final String ABC = "ABC";
@@ -70,8 +71,26 @@ class IntegrityCheckerTest {
                                 new IntegrityCheckResult.MissingFromManifest("sub/photo.jpg"))));
     }
 
-    @Test
-    void checksIntegrityOfAPreHashedFile(@TempDir Path path) throws Exception {
+    static Stream<Arguments> algorithmDigestProvider() {
+        return Stream.of(
+                argumentSet("SHA256", HashAlgorithm.SHA256, ABC_SHA_256),
+                argumentSet("SHA512", HashAlgorithm.SHA512, ABC_SHA_512));
+    }
+
+    static Stream<Arguments> provideUnreadableScenarios() {
+        return Stream.of(
+                argumentSet("directory", (PathSetup) Files::createDirectory),
+                argumentSet("vanished", (PathSetup) _ -> {}));
+    }
+
+    @FunctionalInterface
+    interface PathSetup {
+        void prepare(Path path) throws IOException;
+    }
+
+    @ParameterizedTest
+    @MethodSource("algorithmDigestProvider")
+    void checksIntegrityOfAPreHashedFile(HashAlgorithm algorithm, String digest, @TempDir Path path) throws Exception {
         // Given a file with some content and a checksum manifest
         final String fileName = "photo.jpg";
         final Path photo = Files.createFile(path.resolve(fileName));
@@ -82,8 +101,7 @@ class IntegrityCheckerTest {
 
         final ScannedFile scannedFile = new ScannedFile(photo, fileName);
 
-        final ChecksumManifest manifest =
-                new ChecksumManifest(List.of(new ChecksumEntry(ABC_SHA_512, fileName)), HashAlgorithm.SHA512);
+        final ChecksumManifest manifest = new ChecksumManifest(List.of(new ChecksumEntry(digest, fileName)), algorithm);
 
         // when we call the integrity checker
         final IntegrityChecker checker = new IntegrityChecker(List.of(scannedFile), manifest);
@@ -93,41 +111,6 @@ class IntegrityCheckerTest {
         assertThat(results).hasSize(1).contains(new IntegrityCheckResult.Passed(fileName));
     }
 
-    @Test
-    void listIsNotReusedInCaseOfErrors(@TempDir Path path) throws Exception {
-        // Given a file with some content and a checksum manifest and a non existing one
-        final String fileName = "photo.jpg";
-        final String nonExistent = "not_yet.jpg";
-        final Path nonExistentFile = path.resolve(nonExistent);
-        final Path photo = Files.createFile(path.resolve(fileName));
-        final String emptyHash =
-                "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
-
-        try (BufferedWriter writer = Files.newBufferedWriter(photo)) {
-            writer.write(ABC);
-        }
-
-        final ScannedFile scannedFile = new ScannedFile(photo, fileName);
-        final ScannedFile nonExistingScannedFile = new ScannedFile(nonExistentFile, nonExistent);
-
-        final ChecksumManifest manifest = new ChecksumManifest(
-                List.of(new ChecksumEntry(ABC_SHA_512, fileName), new ChecksumEntry(emptyHash, nonExistent)),
-                HashAlgorithm.SHA512);
-
-        // when we call the integrity checker and it throws
-        final IntegrityChecker checker = new IntegrityChecker(List.of(scannedFile, nonExistingScannedFile), manifest);
-        assertThatThrownBy(checker::calculateIntegrityResults).isInstanceOf(NoSuchFileException.class);
-
-        // and the file is there and we call the same integrity instance
-        Files.createFile(nonExistentFile);
-        final List<IntegrityCheckResult> results = checker.calculateIntegrityResults();
-
-        // then we only have the expected results
-        assertThat(results)
-                .hasSize(2)
-                .contains(new IntegrityCheckResult.Passed(fileName), new IntegrityCheckResult.Passed(nonExistent));
-    }
-
     @ParameterizedTest()
     @ValueSource(strings = {"ADC", ""})
     void checksIntegrityOfAPreHashedFile_hashMismatchShouldFail(String fileContents, @TempDir Path path)
@@ -135,7 +118,6 @@ class IntegrityCheckerTest {
         // Given a file with some content and a checksum manifest that doesn't match the content
         final String fileName = "photo.jpg";
         final Path photo = Files.createFile(path.resolve(fileName));
-        // the precomputed hash is for ABC
 
         try (BufferedWriter writer = Files.newBufferedWriter(photo)) {
             writer.write(fileContents);
@@ -181,5 +163,46 @@ class IntegrityCheckerTest {
 
         // then we have the expected results
         assertThat(results).containsExactlyInAnyOrderElementsOf(expectedResults);
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideUnreadableScenarios")
+    void reportsUnreadableFileAndChecksTheRest(PathSetup setup, @TempDir Path path) throws IOException {
+        // given an unreadable file
+        final String imageAsDir = "dir_not_file.jpg";
+        final Path dirNotFile = path.resolve(imageAsDir);
+        setup.prepare(dirNotFile);
+
+        // and a readable one
+        final String fileName = "photo.jpg";
+        final Path photo = Files.createFile(path.resolve(fileName));
+
+        try (BufferedWriter writer = Files.newBufferedWriter(photo)) {
+            writer.write(ABC);
+        }
+
+        final ScannedFile unreadable = new ScannedFile(dirNotFile, imageAsDir);
+        final ScannedFile scannedFile = new ScannedFile(photo, fileName);
+
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(new ChecksumEntry("doesn't_matter", imageAsDir), new ChecksumEntry(ABC_SHA_512, fileName)),
+                HashAlgorithm.SHA512);
+
+        // when we call the integrity checker
+        final IntegrityChecker checker = new IntegrityChecker(List.of(unreadable, scannedFile), manifest);
+        List<IntegrityCheckResult> results = checker.calculateIntegrityResults();
+
+        // then we have the correct entries
+        assertThat(results)
+                .containsExactlyInAnyOrderElementsOf(List.of(
+                        new IntegrityCheckResult.Unreadable(imageAsDir), new IntegrityCheckResult.Passed(fileName)));
+    }
+
+    @Test
+    void rejectsEmptyManifest() {
+        // given an empty manifest when we instantiate the integrity checker then we throw an exception
+        final ChecksumManifest manifest = new ChecksumManifest(List.of(), HashAlgorithm.SHA512);
+        assertThatThrownBy(() -> new IntegrityChecker(List.of(), manifest))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

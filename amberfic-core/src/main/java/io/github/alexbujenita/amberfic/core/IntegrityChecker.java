@@ -15,24 +15,31 @@ class IntegrityChecker {
     private final Hasher hasher;
 
     IntegrityChecker(List<ScannedFile> scannedFiles, ChecksumManifest manifest) {
+        if (manifest.entries().isEmpty()) {
+            throw new IllegalArgumentException("Manifest should contain at least one entry");
+        }
         this.scannedFiles = scannedFiles;
         this.manifest = manifest;
         this.integrityResults = new ArrayList<>();
         this.hasher = new Hasher(manifest.algorithm());
     }
 
-    List<IntegrityCheckResult> calculateIntegrityResults() throws IOException {
+    List<IntegrityCheckResult> calculateIntegrityResults() {
         for (ScannedFile fileToCheck : scannedFiles) {
 
+            final String hash;
+
             try (InputStream inputStream = Files.newInputStream(fileToCheck.path())) {
-                final ChecksumEntry entryToCheck =
-                        new ChecksumEntry(hasher.hash(inputStream), fileToCheck.relativeName());
-                final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
-                addIntegrityResult(entryToCheck, manifestEntry);
-            } catch (final IOException e) {
-                this.integrityResults.clear();
-                throw e;
+                hash = hasher.hash(inputStream);
+            } catch (final IOException _) {
+                // opening, reading, or closing failed: flag this file and check the next one
+                this.integrityResults.add(new IntegrityCheckResult.Unreadable(fileToCheck.relativeName()));
+                continue;
             }
+
+            final ChecksumEntry entryToCheck = new ChecksumEntry(hash, fileToCheck.relativeName());
+            final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
+            addIntegrityResult(entryToCheck, manifestEntry);
         }
 
         addMissingFromScan(scannedFiles);
@@ -43,6 +50,7 @@ class IntegrityChecker {
 
     /**
      * Checks and adds files that are present in the original manifest but are missing from the scanned source
+     *
      * @param scannedFiles Files scanned from the source to check
      */
     private void addMissingFromScan(List<ScannedFile> scannedFiles) {

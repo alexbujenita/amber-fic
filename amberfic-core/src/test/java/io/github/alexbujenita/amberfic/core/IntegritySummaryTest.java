@@ -12,14 +12,14 @@ class IntegritySummaryTest {
     void countsEachStatus() {
         // given a mixed results
         final List<IntegrityCheckResult> results = List.of(
-                new IntegrityCheckResult.Failed("a.png"),
+                new IntegrityCheckResult.Failed("a.png", "irrelevant"),
                 new IntegrityCheckResult.Passed("b.png"),
                 new IntegrityCheckResult.MissingFromManifest("c.png", "Irrelevant_Hash"),
                 new IntegrityCheckResult.Passed("d.png"),
                 new IntegrityCheckResult.Unreadable("aa.png"),
                 new IntegrityCheckResult.Passed("ab.png"),
                 new IntegrityCheckResult.Passed("ac.png"),
-                new IntegrityCheckResult.Failed("ad.png"),
+                new IntegrityCheckResult.Failed("ad.png", "irrelevant"),
                 new IntegrityCheckResult.Unreadable("x.png"),
                 new IntegrityCheckResult.Unreadable("xyz.png"));
 

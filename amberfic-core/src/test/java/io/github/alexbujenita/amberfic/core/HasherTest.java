@@ -1,5 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
+import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_256;
 import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_512;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,11 +38,7 @@ class HasherTest {
                         HashAlgorithm.SHA256,
                         STRING_TO_HASH,
                         "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
-                arguments(
-                        "empty 256",
-                        HashAlgorithm.SHA256,
-                        "",
-                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
+                arguments("empty 256", HashAlgorithm.SHA256, "", EMPTY_SHA_256),
                 arguments(
                         "a x 1_000_000 256",
                         HashAlgorithm.SHA256,

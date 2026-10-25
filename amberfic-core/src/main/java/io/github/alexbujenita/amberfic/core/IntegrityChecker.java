@@ -71,7 +71,7 @@ class IntegrityChecker {
         } else if (entryToCheck.hash().equals(manifestEntry.hash())) {
             integrityResults.add(new IntegrityCheckResult.Passed(entryToCheck.filePath()));
         } else {
-            integrityResults.add(new IntegrityCheckResult.Failed(entryToCheck.filePath()));
+            integrityResults.add(new IntegrityCheckResult.Failed(entryToCheck.filePath(), entryToCheck.hash()));
         }
     }
 

@@ -3,7 +3,7 @@ package io.github.alexbujenita.amberfic.core;
 sealed interface IntegrityCheckResult {
     record Passed(String filePath) implements IntegrityCheckResult {}
 
-    record Failed(String filePath) implements IntegrityCheckResult {}
+    record Failed(String filePath, String newHash) implements IntegrityCheckResult {}
 
     record MissingFromManifest(String filePath, String hash) implements IntegrityCheckResult {}
 

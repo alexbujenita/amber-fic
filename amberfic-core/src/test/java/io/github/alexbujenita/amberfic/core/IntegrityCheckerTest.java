@@ -1,6 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
-import static io.github.alexbujenita.amberfic.core.util.Constants.ABC_SHA_512;
+import static io.github.alexbujenita.amberfic.core.util.Constants.*;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,11 +18,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class IntegrityCheckerTest {
 
-    static final String ABC_SHA_256 = "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78";
     static final String ABC = "ABC";
 
     static Stream<Arguments> testResultsProvider() {
@@ -82,6 +80,11 @@ class IntegrityCheckerTest {
                 argumentSet("vanished", (PathSetup) _ -> {}));
     }
 
+    static Stream<Arguments> failureProvider() {
+        return Stream.of(
+                argumentSet("with contents", "ADC", ADC_SHA_512), argumentSet("without contents", "", EMPTY_SHA_512));
+    }
+
     @FunctionalInterface
     interface PathSetup {
         void prepare(Path path) throws IOException;
@@ -110,10 +113,10 @@ class IntegrityCheckerTest {
         assertThat(results).hasSize(1).contains(new IntegrityCheckResult.Passed(fileName));
     }
 
-    @ParameterizedTest()
-    @ValueSource(strings = {"ADC", ""})
-    void checksIntegrityOfAPreHashedFile_hashMismatchShouldFail(String fileContents, @TempDir Path path)
-            throws Exception {
+    @ParameterizedTest
+    @MethodSource("failureProvider")
+    void checksIntegrityOfAPreHashedFile_hashMismatchShouldFail(
+            String fileContents, String expectedHash, @TempDir Path path) throws Exception {
         // Given a file with some content and a checksum manifest that doesn't match the content
         final String fileName = "photo.jpg";
         final Path photo = Files.createFile(path.resolve(fileName));
@@ -132,7 +135,7 @@ class IntegrityCheckerTest {
         final List<IntegrityCheckResult> results = checker.calculateIntegrityResults();
 
         // then we have a failed result
-        assertThat(results).hasSize(1).contains(new IntegrityCheckResult.Failed(fileName));
+        assertThat(results).hasSize(1).contains(new IntegrityCheckResult.Failed(fileName, expectedHash));
     }
 
     @ParameterizedTest

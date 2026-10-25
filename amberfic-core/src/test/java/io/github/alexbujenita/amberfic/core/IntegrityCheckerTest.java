@@ -205,4 +205,31 @@ class IntegrityCheckerTest {
         assertThatThrownBy(() -> new IntegrityChecker(List.of(), manifest))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void passesWalkedFilesUnderADifferentRootWithTheSameLayout(@TempDir Path tempDir) throws IOException {
+        // given the manifest's layout under a root other than the one it was created for
+        final Path root = tempDir.resolve("Backup/Photos");
+        final Path vacation = Files.createDirectories(root.resolve("vacation"));
+        Files.writeString(root.resolve("top.jpg"), ABC);
+        Files.writeString(vacation.resolve("beach.jpg"), ABC);
+
+        // and a manifest that stores only root-relative names
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(
+                        new ChecksumEntry(ABC_SHA_512, "top.jpg"),
+                        new ChecksumEntry(ABC_SHA_512, "vacation/beach.jpg")),
+                HashAlgorithm.SHA512);
+
+        // when the walked files are checked
+        final List<ScannedFile> scannedFiles = new FileWalker().walk(root).scannedFiles();
+        final List<IntegrityCheckResult> results =
+                new IntegrityChecker(scannedFiles, manifest).calculateIntegrityResults();
+
+        // then every file passes
+        assertThat(results)
+                .containsExactlyInAnyOrder(
+                        new IntegrityCheckResult.Passed("top.jpg"),
+                        new IntegrityCheckResult.Passed("vacation/beach.jpg"));
+    }
 }

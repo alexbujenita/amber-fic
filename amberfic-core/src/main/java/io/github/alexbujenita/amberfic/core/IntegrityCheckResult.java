@@ -5,7 +5,7 @@ sealed interface IntegrityCheckResult {
 
     record Failed(String filePath) implements IntegrityCheckResult {}
 
-    record MissingFromManifest(String filePath) implements IntegrityCheckResult {}
+    record MissingFromManifest(String filePath, String hash) implements IntegrityCheckResult {}
 
     record MissingFromScan(String filePath) implements IntegrityCheckResult {}
 

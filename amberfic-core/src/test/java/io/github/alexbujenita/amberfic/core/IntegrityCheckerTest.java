@@ -1,5 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
+import static io.github.alexbujenita.amberfic.core.util.Constants.ABC_SHA_512;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,8 +23,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 class IntegrityCheckerTest {
 
     static final String ABC_SHA_256 = "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78";
-    static final String ABC_SHA_512 =
-            "397118fdac8d83ad98813c50759c85b8c47565d8268bf10da483153b747a74743a58a90e85aa9f705ce6984ffc128db567489817e4092d050d8a1cc596ddc119";
     static final String ABC = "ABC";
 
     static Stream<Arguments> testResultsProvider() {
@@ -35,7 +34,7 @@ class IntegrityCheckerTest {
                                 List.of(new ChecksumEntry(ABC_SHA_512, "photo.jpg")), HashAlgorithm.SHA512),
                         List.of(
                                 new IntegrityCheckResult.Passed("photo.jpg"),
-                                new IntegrityCheckResult.MissingFromManifest("extra.jpg"))),
+                                new IntegrityCheckResult.MissingFromManifest("extra.jpg", ABC_SHA_512))),
                 argumentSet(
                         "missing beside known",
                         List.of("photo.jpg"),
@@ -60,7 +59,7 @@ class IntegrityCheckerTest {
                         new ChecksumManifest(List.of(new ChecksumEntry(ABC_SHA_512, "old.jpg")), HashAlgorithm.SHA512),
                         List.of(
                                 new IntegrityCheckResult.MissingFromScan("old.jpg"),
-                                new IntegrityCheckResult.MissingFromManifest("renamed.jpg"))),
+                                new IntegrityCheckResult.MissingFromManifest("renamed.jpg", ABC_SHA_512))),
                 argumentSet(
                         "move to sub folder",
                         List.of("sub/photo.jpg"),
@@ -68,7 +67,7 @@ class IntegrityCheckerTest {
                                 List.of(new ChecksumEntry(ABC_SHA_512, "photo.jpg")), HashAlgorithm.SHA512),
                         List.of(
                                 new IntegrityCheckResult.MissingFromScan("photo.jpg"),
-                                new IntegrityCheckResult.MissingFromManifest("sub/photo.jpg"))));
+                                new IntegrityCheckResult.MissingFromManifest("sub/photo.jpg", ABC_SHA_512))));
     }
 
     static Stream<Arguments> algorithmDigestProvider() {

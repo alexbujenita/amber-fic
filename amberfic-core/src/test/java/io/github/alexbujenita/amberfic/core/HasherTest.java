@@ -1,5 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
+import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_512;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -52,11 +53,7 @@ class HasherTest {
                         HashAlgorithm.SHA512,
                         "a".repeat(1_000_000),
                         "e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973ebde0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b"),
-                arguments(
-                        "empty 512",
-                        HashAlgorithm.SHA512,
-                        "",
-                        "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"));
+                arguments("empty 512", HashAlgorithm.SHA512, "", EMPTY_SHA_512));
     }
 
     public static Stream<Arguments> provideBigStreams() {

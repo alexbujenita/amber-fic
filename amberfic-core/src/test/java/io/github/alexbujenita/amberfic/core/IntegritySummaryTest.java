@@ -14,7 +14,7 @@ class IntegritySummaryTest {
         final List<IntegrityCheckResult> results = List.of(
                 new IntegrityCheckResult.Failed("a.png"),
                 new IntegrityCheckResult.Passed("b.png"),
-                new IntegrityCheckResult.MissingFromManifest("c.png"),
+                new IntegrityCheckResult.MissingFromManifest("c.png", "Irrelevant_Hash"),
                 new IntegrityCheckResult.Passed("d.png"),
                 new IntegrityCheckResult.Unreadable("aa.png"),
                 new IntegrityCheckResult.Passed("ab.png"),

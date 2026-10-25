@@ -66,7 +66,8 @@ class IntegrityChecker {
 
     private void addIntegrityResult(ChecksumEntry entryToCheck, ChecksumEntry manifestEntry) {
         if (manifestEntry == null) {
-            integrityResults.add(new IntegrityCheckResult.MissingFromManifest(entryToCheck.filePath()));
+            integrityResults.add(
+                    new IntegrityCheckResult.MissingFromManifest(entryToCheck.filePath(), entryToCheck.hash()));
         } else if (entryToCheck.hash().equals(manifestEntry.hash())) {
             integrityResults.add(new IntegrityCheckResult.Passed(entryToCheck.filePath()));
         } else {

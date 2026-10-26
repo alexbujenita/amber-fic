@@ -6,6 +6,8 @@ import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_256;
 import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_512;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -101,5 +103,44 @@ class ManifestCreatorTest {
 
         assertThat(updatedManifest.algorithm()).isSameAs(manifest.algorithm());
         assertThat(updatedManifest.entries()).containsExactlyInAnyOrderElementsOf(expectedEntries);
+    }
+
+    @Test
+    void updateIsIdempotent() throws IOException {
+        // given an existing manifest, a file missing from the scan, and a new file that was scanned
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(
+                        new ChecksumEntry(EMPTY_SHA_256, "old.jpg"),
+                        new ChecksumEntry(EMPTY_SHA_256, "miss_in_scan.jpg")),
+                HashAlgorithm.SHA256);
+        final List<IntegrityCheckResult> integrityCheckResultsFirstPass = List.of(
+                new IntegrityCheckResult.Passed("old.jpg"),
+                new IntegrityCheckResult.MissingFromScan("miss_in_scan.jpg"),
+                new IntegrityCheckResult.MissingFromManifest("new.jpg", ABC_SHA_256));
+
+        // when we create the new manifest
+        final ManifestCreator manifestCreator = new ManifestCreator();
+        final ChecksumManifest updatedManifest = manifestCreator.updateManifest(
+                manifest, integrityCheckResultsFirstPass, new ManifestCreator.UpdateOptions(false));
+
+        // and once we write this manifest
+        final StringWriter outFirstPass = new StringWriter();
+        final ChecksumWriter checksumWriter = new ChecksumWriter(updatedManifest.entries());
+        checksumWriter.write(outFirstPass);
+
+        // and we call update again with the updated manifest
+        final List<IntegrityCheckResult> integrityCheckResultsSecondPass = List.of(
+                new IntegrityCheckResult.Passed("old.jpg"),
+                new IntegrityCheckResult.MissingFromScan("miss_in_scan.jpg"),
+                new IntegrityCheckResult.Passed("new.jpg"));
+        final ChecksumManifest updatedSecondPassManifest = manifestCreator.updateManifest(
+                updatedManifest, integrityCheckResultsSecondPass, new ManifestCreator.UpdateOptions(false));
+
+        // then the written manifest is identical to the first one
+        final StringWriter outSecondPass = new StringWriter();
+        final ChecksumWriter checksumWriter2 = new ChecksumWriter(updatedSecondPassManifest.entries());
+        checksumWriter2.write(outSecondPass);
+
+        assertThat(outSecondPass).hasToString(outFirstPass.toString());
     }
 }

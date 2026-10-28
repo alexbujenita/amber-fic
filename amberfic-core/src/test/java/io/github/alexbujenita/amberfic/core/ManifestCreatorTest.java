@@ -143,4 +143,62 @@ class ManifestCreatorTest {
 
         assertThat(outSecondPass).hasToString(outFirstPass.toString());
     }
+
+    @Test
+    void prunesMissingAndReplacesAcceptedHashTogether() {
+        // given an existing manifest, a file missing from the scan,
+        //  a new file that was scanned and an accepted new hash
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(
+                        new ChecksumEntry(EMPTY_SHA_256, "old.jpg"),
+                        new ChecksumEntry(EMPTY_SHA_256, "miss_in_scan.jpg"),
+                        new ChecksumEntry("old_hash", "shadows.jpg")),
+                HashAlgorithm.SHA256);
+        final List<IntegrityCheckResult> integrityCheckResults = List.of(
+                new IntegrityCheckResult.Passed("old.jpg"),
+                new IntegrityCheckResult.MissingFromScan("miss_in_scan.jpg"),
+                new IntegrityCheckResult.MissingFromManifest("new.jpg", ABC_SHA_256),
+                new IntegrityCheckResult.Failed("shadows.jpg", "new_hash"));
+
+        // when we create the new manifest
+        final ManifestCreator manifestCreator = new ManifestCreator();
+        final ChecksumManifest updatedManifest = manifestCreator.updateManifest(
+                manifest, integrityCheckResults, new ManifestCreator.UpdateOptions(true, Set.of("shadows.jpg")));
+
+        final ChecksumManifest expectedManifest = new ChecksumManifest(
+                List.of(
+                        new ChecksumEntry(EMPTY_SHA_256, "old.jpg"),
+                        new ChecksumEntry("new_hash", "shadows.jpg"),
+                        new ChecksumEntry(ABC_SHA_256, "new.jpg")),
+                HashAlgorithm.SHA256);
+
+        // then we have the expected outcome
+        assertThat(updatedManifest.entries()).containsExactlyInAnyOrderElementsOf(expectedManifest.entries());
+        assertThat(updatedManifest.algorithm()).isSameAs(manifest.algorithm());
+    }
+
+    @Test
+    void replacementsAreAppliedOnFailedOnly() {
+        // given an existing manifest
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(new ChecksumEntry(EMPTY_SHA_256, "old.jpg"), new ChecksumEntry(EMPTY_SHA_256, "gone.jpg")),
+                HashAlgorithm.SHA256);
+        final List<IntegrityCheckResult> integrityCheckResults = List.of(
+                new IntegrityCheckResult.Passed("old.jpg"), new IntegrityCheckResult.MissingFromScan("gone.jpg"));
+
+        // when we create the new manifest, without pruning
+        final ManifestCreator manifestCreator = new ManifestCreator();
+        final ChecksumManifest updatedManifest = manifestCreator.updateManifest(
+                manifest,
+                integrityCheckResults,
+                new ManifestCreator.UpdateOptions(false, Set.of("old.jpg", "typo.jpg", "gone.jpg")));
+
+        final ChecksumManifest expectedManifest = new ChecksumManifest(
+                List.of(new ChecksumEntry(EMPTY_SHA_256, "old.jpg"), new ChecksumEntry(EMPTY_SHA_256, "gone.jpg")),
+                HashAlgorithm.SHA256);
+
+        // then we have the expected outcome
+        assertThat(updatedManifest.entries()).containsExactlyInAnyOrderElementsOf(expectedManifest.entries());
+        assertThat(updatedManifest.algorithm()).isSameAs(manifest.algorithm());
+    }
 }

@@ -38,7 +38,7 @@ class ChecksumWriterTest {
     @Test
     void writesCorrectlyToAFile(@TempDir Path path) throws IOException {
         // Given a path for the result output
-        final Path outputFile = path.resolve("amberfic_checksum.sha512.tmp");
+        final Path outputFile = path.resolve("amberfic_checksum.sha512");
         final ChecksumEntry a = new ChecksumEntry("hash_123", "café.png");
 
         // when we call the writer
@@ -138,5 +138,37 @@ class ChecksumWriterTest {
             List<Path> list = filesStream.toList();
             assertThat(list).hasSize(3).contains(sentinelFile);
         }
+    }
+
+    @Test
+    void existingTmpFailsButWeKeepIt(@TempDir Path path) throws IOException {
+        // Given a path for the result output and an already existing tmp and checksum file
+        final Path outputFile = path.resolve("amberfic_checksum.sha512");
+        final ChecksumEntry a = new ChecksumEntry("hash_123", "café.png");
+
+        final String entry = "old_hash  existing.jpg\n";
+
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFile)) {
+            writer.write(entry);
+        }
+
+        final Path tmpFile = Files.createFile(path.resolve("amberfic_checksum.sha512.tmp"));
+
+        try (BufferedWriter writer = Files.newBufferedWriter(tmpFile)) {
+            writer.write("occupado");
+        }
+
+        // when we call the writer
+        final ChecksumWriter checksumWriter = new ChecksumWriter(List.of(a));
+
+        // then we get back our error
+        assertThatThrownBy(() -> checksumWriter.write(outputFile))
+                .isInstanceOfSatisfying(
+                        StaleTempFileException.class,
+                        stfe -> assertThat(stfe.getFile()).isEqualTo(tmpFile.toString()));
+
+        // and the temp file and the original checksum are still the same
+        assertThat(tmpFile).hasBinaryContent("occupado".getBytes(StandardCharsets.UTF_8));
+        assertThat(outputFile).hasBinaryContent(entry.getBytes(StandardCharsets.UTF_8));
     }
 }

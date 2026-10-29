@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -32,7 +33,12 @@ class ChecksumWriter {
 
     void write(Path hashResultPath) throws IOException {
         // create a tmp file to write on in case of any errors
-        Path tmpFile = Files.createFile(hashResultPath.resolveSibling(hashResultPath.getFileName() + ".tmp"));
+        Path tmpFile = hashResultPath.resolveSibling(hashResultPath.getFileName() + ".tmp");
+        try {
+            Files.createFile(tmpFile);
+        } catch (FileAlreadyExistsException faee) {
+            throw new StaleTempFileException(tmpFile.toString(), faee);
+        }
 
         try {
             try (BufferedWriter writer = Files.newBufferedWriter(tmpFile, StandardCharsets.UTF_8)) {

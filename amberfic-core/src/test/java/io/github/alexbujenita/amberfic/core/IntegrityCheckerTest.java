@@ -234,4 +234,63 @@ class IntegrityCheckerTest {
                         new IntegrityCheckResult.Passed("top.jpg"),
                         new IntegrityCheckResult.Passed("vacation/beach.jpg"));
     }
+
+    @Test
+    void weHaveTheCorrectProgressUpdates(@TempDir Path tempDir) throws IOException {
+        // given three files and a manifest
+        final Path fileA = tempDir.resolve("fileA");
+        final Path fileB = tempDir.resolve("fileB");
+        final Path fileC = tempDir.resolve("fileC");
+        final Path[] files = {fileA, fileB, fileC};
+
+        for (int idx = 0, bytes = 1; idx < files.length; idx++, bytes *= 10) {
+            Files.write(files[idx], new byte[bytes]);
+        }
+
+        final List<ScannedFile> scannedFiles = new FileWalker().walk(tempDir).scannedFiles();
+
+        final ChecksumManifest manifest =
+                new ChecksumManifest(List.of(new ChecksumEntry("irrelevant_hash", "other.jpg")), HashAlgorithm.SHA512);
+
+        final List<ProgressTracking> notifications = new ArrayList<>();
+        final ProgressListener listener = notifications::add;
+
+        // when the walked files are checked
+        final List<IntegrityCheckResult> results =
+                new IntegrityChecker(scannedFiles, manifest).calculateIntegrityResults(listener);
+
+        // then the progress is correctly recorded for each entry found
+        assertThat(notifications)
+                .satisfiesExactly(
+                        progressTracking1 -> {
+                            assertThat(progressTracking1.checkResult())
+                                    .isInstanceOfSatisfying(
+                                            IntegrityCheckResult.MissingFromManifest.class,
+                                            missingFromManifest -> assertThat(missingFromManifest.filePath())
+                                                    .isEqualTo("fileA"));
+                            assertThat(progressTracking1.cumulativeBytes()).isEqualTo(1L);
+                            assertThat(progressTracking1.filesDone()).isEqualTo(1L);
+                        },
+                        progressTracking2 -> {
+                            assertThat(progressTracking2.checkResult())
+                                    .isInstanceOfSatisfying(
+                                            IntegrityCheckResult.MissingFromManifest.class,
+                                            missingFromManifest -> assertThat(missingFromManifest.filePath())
+                                                    .isEqualTo("fileB"));
+                            assertThat(progressTracking2.cumulativeBytes()).isEqualTo(11L);
+                            assertThat(progressTracking2.filesDone()).isEqualTo(2L);
+                        },
+                        progressTracking3 -> {
+                            assertThat(progressTracking3.checkResult())
+                                    .isInstanceOfSatisfying(
+                                            IntegrityCheckResult.MissingFromManifest.class,
+                                            missingFromManifest -> assertThat(missingFromManifest.filePath())
+                                                    .isEqualTo("fileC"));
+                            assertThat(progressTracking3.cumulativeBytes()).isEqualTo(111L);
+                            assertThat(progressTracking3.filesDone()).isEqualTo(3L);
+                        });
+
+        // and the results are correct, we have 4, the 3 missing from the manifest and one from the scan
+        assertThat(results).hasSize(4);
+    }
 }

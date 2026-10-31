@@ -9,6 +9,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 class IntegrityChecker {
+
+    private static final ProgressListener NOOP = _ -> {};
+
     private final List<IntegrityCheckResult> integrityResults;
     private final List<ScannedFile> scannedFiles;
     private final ChecksumManifest manifest;
@@ -25,8 +28,14 @@ class IntegrityChecker {
     }
 
     List<IntegrityCheckResult> calculateIntegrityResults() {
-        for (ScannedFile fileToCheck : scannedFiles) {
+        return this.calculateIntegrityResults(NOOP);
+    }
 
+    List<IntegrityCheckResult> calculateIntegrityResults(ProgressListener progressListener) {
+        long cumulativeBytes = 0L;
+        long filesDone = 0L;
+
+        for (ScannedFile fileToCheck : scannedFiles) {
             final String hash;
 
             try (InputStream inputStream = Files.newInputStream(fileToCheck.path())) {
@@ -37,9 +46,14 @@ class IntegrityChecker {
                 continue;
             }
 
+            cumulativeBytes += fileToCheck.fileSize();
+            filesDone++;
+
             final ChecksumEntry entryToCheck = new ChecksumEntry(hash, fileToCheck.relativeName());
             final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
-            addIntegrityResult(entryToCheck, manifestEntry);
+            final IntegrityCheckResult addedResult = addIntegrityResult(entryToCheck, manifestEntry);
+
+            progressListener.onFileChecked(new ProgressTracking(addedResult, filesDone, cumulativeBytes));
         }
 
         addMissingFromScan(scannedFiles);
@@ -64,15 +78,18 @@ class IntegrityChecker {
                 .forEach(p -> this.integrityResults.add(new IntegrityCheckResult.MissingFromScan(p)));
     }
 
-    private void addIntegrityResult(ChecksumEntry entryToCheck, ChecksumEntry manifestEntry) {
+    private IntegrityCheckResult addIntegrityResult(ChecksumEntry entryToCheck, ChecksumEntry manifestEntry) {
+        final IntegrityCheckResult result;
         if (manifestEntry == null) {
-            integrityResults.add(
-                    new IntegrityCheckResult.MissingFromManifest(entryToCheck.filePath(), entryToCheck.hash()));
+            result = new IntegrityCheckResult.MissingFromManifest(entryToCheck.filePath(), entryToCheck.hash());
         } else if (entryToCheck.hash().equals(manifestEntry.hash())) {
-            integrityResults.add(new IntegrityCheckResult.Passed(entryToCheck.filePath()));
+            result = new IntegrityCheckResult.Passed(entryToCheck.filePath());
         } else {
-            integrityResults.add(new IntegrityCheckResult.Failed(entryToCheck.filePath(), entryToCheck.hash()));
+            result = new IntegrityCheckResult.Failed(entryToCheck.filePath(), entryToCheck.hash());
         }
+
+        this.integrityResults.add(result);
+        return result;
     }
 
     private ChecksumEntry getManifestEntryByPath(String fileToCheck) {

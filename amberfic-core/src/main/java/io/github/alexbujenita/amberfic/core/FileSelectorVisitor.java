@@ -55,7 +55,7 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         if (shouldKeepFile(file, attrs)) {
-            this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file)));
+            this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file), attrs.size()));
         } else {
             this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(this.rootPath, file)));
         }

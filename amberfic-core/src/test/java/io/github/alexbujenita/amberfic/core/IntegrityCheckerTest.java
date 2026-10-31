@@ -293,4 +293,45 @@ class IntegrityCheckerTest {
         // and the results are correct, we have 4, the 3 missing from the manifest and one from the scan
         assertThat(results).hasSize(4);
     }
+
+    @Test
+    void progressUpdatesContainsUnreadableFiles(@TempDir Path tempDir) throws IOException {
+        // given two files, one of it disappears before the check, and a manifest
+        final Path aFile = tempDir.resolve("a");
+        final Path goneFile = tempDir.resolve("gone");
+        final List<ProgressTracking> notifications = new ArrayList<>();
+        final ProgressListener listener = notifications::add;
+
+        Files.write(aFile, ABC.getBytes());
+
+        final ChecksumManifest manifest = new ChecksumManifest(
+                List.of(new ChecksumEntry(ABC_SHA_512, "a"), new ChecksumEntry("irrelevant", "gone")),
+                HashAlgorithm.SHA512);
+
+        // when we verify the checksums against the constructed scanned files
+        final List<ScannedFile> scannedFiles =
+                List.of(new ScannedFile(aFile, "a", 3L), new ScannedFile(goneFile, "gone", 7L));
+        new IntegrityChecker(scannedFiles, manifest).calculateIntegrityResults(listener);
+
+        // then we have both updates, 1 ok 1 unreadable
+        assertThat(notifications)
+                .satisfiesExactly(
+                        progressTracking1 -> {
+                            assertThat(progressTracking1.checkResult())
+                                    .isInstanceOfSatisfying(
+                                            IntegrityCheckResult.Passed.class,
+                                            passed -> assertThat(passed.filePath())
+                                                    .isEqualTo("a"));
+                            assertThat(progressTracking1.cumulativeBytes()).isEqualTo(3L);
+                            assertThat(progressTracking1.filesDone()).isEqualTo(1L);
+                        },
+                        progressTracking2 -> {
+                            assertThat(progressTracking2.checkResult())
+                                    .isInstanceOfSatisfying(
+                                            IntegrityCheckResult.Unreadable.class,
+                                            gf -> assertThat(gf.filePath()).isEqualTo("gone"));
+                            assertThat(progressTracking2.cumulativeBytes()).isEqualTo(10L);
+                            assertThat(progressTracking2.filesDone()).isEqualTo(2L);
+                        });
+    }
 }

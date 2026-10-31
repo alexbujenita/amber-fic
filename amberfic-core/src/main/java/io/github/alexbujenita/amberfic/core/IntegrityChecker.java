@@ -36,24 +36,12 @@ class IntegrityChecker {
         long filesDone = 0L;
 
         for (ScannedFile fileToCheck : scannedFiles) {
-            final String hash;
-
-            try (InputStream inputStream = Files.newInputStream(fileToCheck.path())) {
-                hash = hasher.hash(inputStream);
-            } catch (final IOException _) {
-                // opening, reading, or closing failed: flag this file and check the next one
-                this.integrityResults.add(new IntegrityCheckResult.Unreadable(fileToCheck.relativeName()));
-                continue;
-            }
+            final IntegrityCheckResult checkResult = checkFile(fileToCheck);
 
             cumulativeBytes += fileToCheck.fileSize();
             filesDone++;
 
-            final ChecksumEntry entryToCheck = new ChecksumEntry(hash, fileToCheck.relativeName());
-            final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
-            final IntegrityCheckResult addedResult = addIntegrityResult(entryToCheck, manifestEntry);
-
-            progressListener.onFileChecked(new ProgressTracking(addedResult, filesDone, cumulativeBytes));
+            progressListener.onFileChecked(new ProgressTracking(checkResult, filesDone, cumulativeBytes));
         }
 
         addMissingFromScan(scannedFiles);
@@ -76,6 +64,22 @@ class IntegrityChecker {
         manifestEntries.stream()
                 .filter(p -> !scannedEntries.contains(p))
                 .forEach(p -> this.integrityResults.add(new IntegrityCheckResult.MissingFromScan(p)));
+    }
+
+    private IntegrityCheckResult checkFile(ScannedFile fileToCheck) {
+        final String hash;
+        try (InputStream inputStream = Files.newInputStream(fileToCheck.path())) {
+            hash = hasher.hash(inputStream);
+        } catch (IOException _) {
+            // opening, reading, or closing failed: flag this file and record it as well
+            final IntegrityCheckResult.Unreadable unreadable =
+                    new IntegrityCheckResult.Unreadable(fileToCheck.relativeName());
+            this.integrityResults.add(unreadable);
+            return unreadable;
+        }
+        final ChecksumEntry entryToCheck = new ChecksumEntry(hash, fileToCheck.relativeName());
+        final ChecksumEntry manifestEntry = getManifestEntryByPath(fileToCheck.relativeName());
+        return addIntegrityResult(entryToCheck, manifestEntry);
     }
 
     private IntegrityCheckResult addIntegrityResult(ChecksumEntry entryToCheck, ChecksumEntry manifestEntry) {

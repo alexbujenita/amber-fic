@@ -36,7 +36,7 @@ class ChecksumReader {
     private HashAlgorithm extractAlgorithm(Path path) throws IOException {
         final String fileExtension = getFileExtension(path.getFileName().toString());
         try {
-            return HashAlgorithm.valueOf(fileExtension.toUpperCase());
+            return HashAlgorithm.fromExtension(fileExtension);
         } catch (IllegalArgumentException _) {
             throw new IOException("Invalid hash algorithm: " + fileExtension);
         }

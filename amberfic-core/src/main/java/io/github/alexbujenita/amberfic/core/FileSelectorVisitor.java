@@ -23,7 +23,7 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
     /** If this is true, hidden folders will be traversed and hidden files will be reported for hashing. Junk files and dirs are still ignored */
     private final boolean includeHidden;
 
-    public FileSelectorVisitor(
+    FileSelectorVisitor(
             List<ScannedFile> scannedFiles, List<IgnoredEntry> ignoredEntries, Path rootPath, boolean includeHidden) {
         this.scannedFiles = scannedFiles;
         this.ignoredEntries = ignoredEntries;

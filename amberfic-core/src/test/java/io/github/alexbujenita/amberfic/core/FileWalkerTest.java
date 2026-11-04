@@ -355,13 +355,11 @@ class FileWalkerTest {
             Files.createFile(nested.resolve("notes.sha512"));
             Files.createFile(nested.resolve("amberfic_checksum.sha512.tmp"));
             Files.createFile(nested.resolve("notes.tmp"));
-            Files.createFile(nested.resolve("amberfic_checksum.sha512.bak"));
             Files.createFile(nested.resolve("notes.bak"));
 
             Files.createFile(nested.resolve("notes.sha256"));
             Files.createFile(nested.resolve("amberfic_checksum.sha256"));
             Files.createFile(nested.resolve("amberfic_checksum.sha256.tmp"));
-            Files.createFile(nested.resolve("amberfic_checksum.sha256.bak"));
 
             // when we walk all the dirs
             final FileWalker walker = new FileWalker();
@@ -379,10 +377,8 @@ class FileWalkerTest {
                     .containsExactlyInAnyOrder(
                             "amberfic_checksum.sha512",
                             "amberfic_checksum.sha512.tmp",
-                            "amberfic_checksum.sha512.bak",
                             "amberfic_checksum.sha256",
-                            "amberfic_checksum.sha256.tmp",
-                            "amberfic_checksum.sha256.bak");
+                            "amberfic_checksum.sha256.tmp");
         }
     }
 

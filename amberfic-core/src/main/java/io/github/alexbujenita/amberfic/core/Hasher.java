@@ -7,23 +7,23 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Objects;
 
-public final class Hasher {
+final class Hasher {
 
     private static final int BUFFER_SIZE = 1024;
     private static final HexFormat HEX = HexFormat.of();
 
     private final HashAlgorithm algorithm;
 
-    public Hasher() {
+    Hasher() {
         this(HashAlgorithm.SHA512);
     }
 
-    public Hasher(HashAlgorithm algorithm) {
+    Hasher(HashAlgorithm algorithm) {
         Objects.requireNonNull(algorithm, "Algorithm cannot be null.");
         this.algorithm = algorithm;
     }
 
-    public String hash(InputStream input) throws IOException {
+    String hash(InputStream input) throws IOException {
         final MessageDigest messageDigest;
 
         try {
@@ -40,5 +40,9 @@ public final class Hasher {
         }
 
         return HEX.formatHex(messageDigest.digest());
+    }
+
+    HashAlgorithm getAlgorithm() {
+        return this.algorithm;
     }
 }

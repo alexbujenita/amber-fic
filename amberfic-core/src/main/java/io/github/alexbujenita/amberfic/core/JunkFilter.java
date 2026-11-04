@@ -1,5 +1,8 @@
 package io.github.alexbujenita.amberfic.core;
 
+import static io.github.alexbujenita.amberfic.core.ManifestFiles.TMP_SUFFIX;
+import static io.github.alexbujenita.amberfic.core.ManifestFiles.fileName;
+
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,12 +24,10 @@ final class JunkFilter {
             // macos
             ".DS_Store");
     private static final Set<String> PROGRAM_FILES = Set.of(
-            "amberfic_checksum.sha512",
-            "amberfic_checksum.sha512.tmp",
-            "amberfic_checksum.sha512.bak",
-            "amberfic_checksum.sha256",
-            "amberfic_checksum.sha256.tmp",
-            "amberfic_checksum.sha256.bak");
+            fileName(HashAlgorithm.SHA512),
+            fileName(HashAlgorithm.SHA512) + TMP_SUFFIX,
+            fileName(HashAlgorithm.SHA256),
+            fileName(HashAlgorithm.SHA256) + TMP_SUFFIX);
     private static final Set<String> JUNK = Stream.of(JUNK_DIRS, JUNK_FILES, PROGRAM_FILES)
             .flatMap(Set::stream)
             .collect(Collectors.toUnmodifiableSet());

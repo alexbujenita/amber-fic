@@ -18,8 +18,8 @@ public final class Amberfic {
                 new ArrayList<>(walkResults.scannedFiles().size());
 
         for (final ScannedFile scannedFile : walkResults.scannedFiles()) {
-            try (final InputStream is = Files.newInputStream(scannedFile.path())) {
-                entries.add(new ChecksumEntry(hasher.hash(is), scannedFile.relativeName()));
+            try (InputStream inputStream = Files.newInputStream(scannedFile.path())) {
+                entries.add(new ChecksumEntry(hasher.hash(inputStream), scannedFile.relativeName()));
             }
         }
 

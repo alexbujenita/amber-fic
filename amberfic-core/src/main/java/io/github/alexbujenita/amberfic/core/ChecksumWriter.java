@@ -1,7 +1,5 @@
 package io.github.alexbujenita.amberfic.core;
 
-import static io.github.alexbujenita.amberfic.core.ManifestFiles.TMP_SUFFIX;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -27,15 +25,15 @@ class ChecksumWriter {
 
     void write(Writer writer) throws IOException {
 
-        for (ChecksumEntry hashedResult : entries) {
-            writer.write(hashedResult.entry());
+        for (ChecksumEntry entry : entries) {
+            writer.write(entry.toLine());
             writer.write("\n");
         }
     }
 
     void write(Path hashResultPath) throws IOException {
         // create a tmp file to write on in case of any errors
-        Path tmpFile = hashResultPath.resolveSibling(hashResultPath.getFileName() + TMP_SUFFIX);
+        Path tmpFile = hashResultPath.resolveSibling(hashResultPath.getFileName() + ManifestFiles.TMP_SUFFIX);
         try {
             Files.createFile(tmpFile);
         } catch (FileAlreadyExistsException faee) {
@@ -49,7 +47,7 @@ class ChecksumWriter {
 
             // if we're here, all good, we can replace the old file
             Files.move(tmpFile, hashResultPath, StandardCopyOption.ATOMIC_MOVE);
-            // and cleanup the tmp file in case of any previous error
+            // and cleanup the tmp file
         } finally {
             Files.deleteIfExists(tmpFile);
         }

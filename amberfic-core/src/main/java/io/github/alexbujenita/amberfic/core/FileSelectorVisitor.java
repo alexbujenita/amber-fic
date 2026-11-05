@@ -35,11 +35,11 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
         final Path dirName = dir.getFileName();
         if (null == dirName) {
-            // we must be at a system root level, further checks will have throw an NPE
+            // we must be at a system root level
             return FileVisitResult.CONTINUE;
         }
         if (shouldIgnoreDir(dir, dirName)) {
-            this.ignoredEntries.add(new IgnoredEntry(dir, getStandardizedPath(this.rootPath, dir)));
+            this.ignoredEntries.add(new IgnoredEntry(dir, getStandardizedPath(dir)));
             return FileVisitResult.SKIP_SUBTREE;
         }
         return FileVisitResult.CONTINUE;
@@ -55,9 +55,9 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         if (shouldKeepFile(file, attrs)) {
-            this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(this.rootPath, file), attrs.size()));
+            this.scannedFiles.add(new ScannedFile(file, getStandardizedPath(file), attrs.size()));
         } else {
-            this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(this.rootPath, file)));
+            this.ignoredEntries.add(new IgnoredEntry(file, getStandardizedPath(file)));
         }
 
         return FileVisitResult.CONTINUE;
@@ -72,13 +72,14 @@ class FileSelectorVisitor extends SimpleFileVisitor<Path> {
 
     /**
      * Helps standardize a path to a file. Windows backslash folder\file.txt vs Mac/Linux forward slash folder/file.txt
+     *  Turns a scanned path into the name we store in the manifest: relative to the scan root
+     *  and normalized so "café.jpg" from a any OS matches the same on any other OSs
      *
-     * @param path The root
-     * @param file The current file
+     * @param path The current file
      * @return A standardized path to the file
      */
-    private String getStandardizedPath(Path path, Path file) {
-        final Path relativePath = path.relativize(file);
+    private String getStandardizedPath(Path path) {
+        final Path relativePath = this.rootPath.relativize(path);
         final StringBuilder fullPath = new StringBuilder();
         for (Path component : relativePath) {
             if (!fullPath.isEmpty()) {

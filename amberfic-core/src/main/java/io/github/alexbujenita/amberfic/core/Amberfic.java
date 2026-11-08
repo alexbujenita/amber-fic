@@ -11,7 +11,7 @@ public final class Amberfic {
 
     private Amberfic() {}
 
-    static void create(Path root) throws IOException {
+    public static void create(Path root) throws IOException {
         final Results walkResults = new FileWalker().walk(root);
         final Hasher hasher = new Hasher();
         final List<ChecksumEntry> entries =

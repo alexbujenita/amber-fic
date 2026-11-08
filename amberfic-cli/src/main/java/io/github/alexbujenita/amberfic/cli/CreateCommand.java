@@ -6,10 +6,10 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "create")
+@CommandLine.Command(name = "create", description = "Create a checksum manifest from a given folder.")
 public class CreateCommand implements Callable<Integer> {
 
-    @CommandLine.Parameters(paramLabel = "<folder>")
+    @CommandLine.Parameters(paramLabel = "<folder>", description = "Folder used as base to start scanning all files.")
     private Path folder;
 
     @Override

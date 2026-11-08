@@ -1,24 +1,39 @@
-# Amber FIC
+# Amberfic
 
-**Highly work in progress!**
+<p align="center">
+  <img src="amberfic_logo.svg" alt="Logo Name" width="250" />
+</p>
 
-Amber file integrity checker.
 
-A utility to minimise losing files by hashing them and then comparing them at a later
-date with a checksum.
+## **Highly work in progress! USE AT YOUR OWN RISK**
+
+Amberfic is a utility to hash all files recursively in a folder
+that the user passes as an argument.
+
+Currently only the creation of the manifest is "working".
+
+It will overwrite any existing manifest, and it can't yet cope
+with OSs not being able to write to a FS.
 
 ## Motivation
 
-It happened quite a few times for me to have multiple backups of my photos, on a computer, on two HDDs and 
-on two USB sticks, looking at the USB sticks some photos would look corrupt.
+Many times I've spotted corrupted photos in my usb sticks and had to check them all again.
 
-Wanted to have a more proactive approach, instead of going through all photos, hash them all and check from time to time.
+I wanted a simple tool to create a manifest for those files and later on compare them
+and tell me which are corrupted.
 
 ## Build
 
 ```shell
 mvn verify
 ```
+
+## MVP tracking
+
+- Create a manifest deals with existing ones
+- Deal with different FSs
+- Have a verify command
+- Have an update command
 
 ## TODO
 

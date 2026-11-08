@@ -4,7 +4,10 @@ import picocli.CommandLine;
 
 @CommandLine.Command(
         name = "amberfic",
+        scope = CommandLine.ScopeType.INHERIT,
         mixinStandardHelpOptions = true,
+        description = "Provides utilities to perform checks on files.",
+        version = "0.0.1",
         subcommands = {CreateCommand.class})
 public class AmberficCLI {
 

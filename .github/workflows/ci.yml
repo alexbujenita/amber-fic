@@ -1,0 +1,25 @@
+name: "Run tests"
+
+on: [ "push", "pull_request" ]
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-26, windows-2025, ubuntu-26.04 ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v7
+      - name: Setup JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        run: .\mvnw.cmd -B verify
+      - name: Build on macOS / Linux
+        if: runner.os != 'Windows'
+        run: ./mvnw -B verify

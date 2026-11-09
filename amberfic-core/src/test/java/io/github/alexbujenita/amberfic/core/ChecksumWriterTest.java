@@ -3,11 +3,14 @@ package io.github.alexbujenita.amberfic.core;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -85,33 +88,38 @@ class ChecksumWriterTest {
     }
 
     @Test
-    void replacesExistingManifestWithoutLeavingTemporaryFiles(@TempDir Path path) throws IOException {
-        // given an existing checksum file in a nested dir
-        Path nestedDir = Files.createDirectories(path.resolve("nested"));
-        final Path checksumFile = Files.createFile(nestedDir.resolve("amberfic_checksum.sha512"));
-        final String entry = """
-                hash_456  a.png
-                hash_123  sub/b.png
-                hash_abc  sub/docs/some.pdf
-                """;
+    void replacesExistingManifestWithoutLeavingTemporaryFiles() throws IOException {
+        // given an in-memory filesystem with working directory /work, independent of the host's drives
+        final Configuration configuration =
+                Configuration.unix().toBuilder().setWorkingDirectory("/work").build();
+        try (FileSystem fileSystem = Jimfs.newFileSystem(configuration)) {
+            // and an existing checksum file in a nested dir
+            final Path manifestDir = Files.createDirectories(fileSystem.getPath("/work/holiday/manifests"));
+            final Path checksumFile = Files.createFile(manifestDir.resolve("amberfic_checksum.sha512"));
+            final String entry = """
+                    hash_456  a.png
+                    hash_123  sub/b.png
+                    hash_abc  sub/docs/some.pdf
+                    """;
 
-        try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
-            writer.write(entry);
-        }
+            try (BufferedWriter writer = Files.newBufferedWriter(checksumFile)) {
+                writer.write(entry);
+            }
 
-        // when we call the writer
-        final Path relativeChecksumFile = Path.of("").toAbsolutePath().relativize(checksumFile);
-        final ChecksumWriter checksumWriter = new ChecksumWriter(List.of(new ChecksumEntry("hash_xyz", "random.jpg")));
-        checksumWriter.write(relativeChecksumFile);
+            // when we call the writer with a path relative to the working directory
+            final Path relativeChecksumFile = fileSystem.getPath("holiday", "manifests", "amberfic_checksum.sha512");
+            final ChecksumWriter checksumWriter =
+                    new ChecksumWriter(List.of(new ChecksumEntry("hash_xyz", "random.jpg")));
+            checksumWriter.write(relativeChecksumFile);
 
-        // then the checksum file has the correct entries
-        final String expected = "hash_xyz  random.jpg\n";
-        assertThat(checksumFile).hasBinaryContent(expected.getBytes(StandardCharsets.UTF_8));
+            // then the checksum file has the correct entries
+            final String expected = "hash_xyz  random.jpg\n";
+            assertThat(checksumFile).hasBinaryContent(expected.getBytes(StandardCharsets.UTF_8));
 
-        // and no temporary file remains
-        try (Stream<Path> filesStream = Files.walk(path)) {
-            List<Path> list = filesStream.toList();
-            assertThat(list).hasSize(3).contains(checksumFile);
+            // and no temporary file remains
+            try (Stream<Path> filesStream = Files.list(manifestDir)) {
+                assertThat(filesStream.toList()).containsExactly(checksumFile);
+            }
         }
     }
 

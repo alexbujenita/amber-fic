@@ -9,7 +9,7 @@ import java.util.Objects;
 
 final class Hasher {
 
-    private static final int BUFFER_SIZE = 1024;
+    private static final int BUFFER_SIZE = 8192;
     private static final HexFormat HEX = HexFormat.of();
 
     private final HashAlgorithm algorithm;

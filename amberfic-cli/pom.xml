@@ -52,6 +52,7 @@
                     </annotationProcessorPaths>
                     <compilerArgs>
                         <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
+                        <arg>-Adisable.proxy.config=true</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

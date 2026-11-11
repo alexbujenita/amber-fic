@@ -28,6 +28,35 @@ and tell me which are corrupted.
 mvn verify
 ```
 
+## Build native
+You need GraalVM.
+
+```shell
+./mvnw -Pnative package
+```
+
+Or even better use the option below so it targets the machine CPU.
+Otherwise the binary might not use SHA512 CPU instructions, locally a hash of a 300MB file
+takes 0.70s and with `-march=native` it drops down to 0.22s.
+
+```shell
+NATIVE_IMAGE_OPTIONS=-march=native ./mvnw -Pnative package
+```
+
+PS:
+
+Use this on Windows
+
+```powershell
+$env:NATIVE_IMAGE_OPTIONS='-march=native'; .\mvnw.cmd -Pnative package
+```
+
+and remove the env var if not needed anymore
+
+```powershell
+Remove-Item Env:NATIVE_IMAGE_OPTIONS
+```
+
 ## MVP tracking
 
 - Create a manifest deals with existing ones

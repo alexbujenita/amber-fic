@@ -57,6 +57,7 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          skip-decompress: true
 
       - name: List downloaded files
         run: ls -lR dist

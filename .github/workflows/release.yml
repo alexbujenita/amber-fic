@@ -27,6 +27,10 @@ jobs:
             native: false
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Set the version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Checkout the repo
         uses: actions/checkout@v7
 
@@ -62,38 +66,43 @@ jobs:
         if: runner.os == 'Windows' && matrix.native
         working-directory: amberfic-cli-dist/target
         run: |
-          7z a ../../amberfic-${{ matrix.platform }}.zip amberfic.exe
+          7z a ../../amberfic-${env:VERSION}-${{ matrix.platform }}.zip amberfic.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          7z l ../../amberfic-${{ matrix.platform }}.zip
+          7z l ../../amberfic-${env:VERSION}-${{ matrix.platform }}.zip
 
       - name: Pack binary on macOS / Linux
         if: runner.os != 'Windows' && matrix.native
-        run: tar -czf amberfic-${{ matrix.platform }}.tar.gz -C amberfic-cli-dist/target amberfic
+        run: tar -czf amberfic-${VERSION}-${{ matrix.platform }}.tar.gz -C amberfic-cli-dist/target amberfic
 
       - name: Upload binary
         if: matrix.native
         uses: actions/upload-artifact@v7
         with:
-          path: amberfic-${{ matrix.platform }}.${{ runner.os == 'Windows' && 'zip' || 'tar.gz' }}
+          path: amberfic-${{ env.VERSION }}-${{ matrix.platform }}.${{ runner.os == 'Windows' && 'zip' || 'tar.gz' }}
           archive: 'false'
           if-no-files-found: error
+
+      - name: Rename Jar
+        if: matrix.platform == 'linux-x64'
+        shell: bash
+        run: mv amberfic-cli-dist/target/amberfic.jar amberfic-cli-dist/target/amberfic-${VERSION}.jar
 
       - name: Upload Jar
         if: matrix.platform == 'linux-x64'
         uses: actions/upload-artifact@v7
         with:
-          path: amberfic-cli-dist/target/amberfic.jar
+          path: amberfic-cli-dist/target/amberfic-${{ env.VERSION }}.jar
           archive: 'false'
           if-no-files-found: error
 
       - name: Rename JLink zip
         shell: bash
-        run: mv amberfic-cli-dist/target/amberfic-cli-dist-*.zip amberfic-jlink-${{ matrix.platform }}.zip
+        run: mv amberfic-cli-dist/target/amberfic-cli-dist-*.zip amberfic-jlink-${VERSION}-${{ matrix.platform }}.zip
 
       - name: Upload JLink
         uses: actions/upload-artifact@v7
         with:
-          path: amberfic-jlink-${{ matrix.platform }}.zip
+          path: amberfic-jlink-${{ env.VERSION }}-${{ matrix.platform }}.zip
           archive: 'false'
           if-no-files-found: error
 

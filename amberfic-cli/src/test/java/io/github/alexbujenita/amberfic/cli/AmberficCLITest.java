@@ -28,6 +28,21 @@ class AmberficCLITest {
     }
 
     @Test
+    void printsCorrectVersion() {
+        // given we call the amberfic --version
+        final int exitCode = AmberficCLI.run(cmd, "--version");
+        final String pomVersion = System.getProperty("amberfic-test-version");
+
+        // then the version is correct and no error is produced
+        assertThat(pomVersion)
+                .as("system property amberfic-test-version from Surefire")
+                .isNotBlank();
+        assertThat(exitCode).isZero();
+        assertThat(outWriter).hasToString("amberfic " + pomVersion + System.lineSeparator());
+        assertThat(errorWriter.toString()).isEmpty();
+    }
+
+    @Test
     void givenAFolderItCreatesAManifest(@TempDir Path folder) throws IOException {
         // given a folder and a file in it
         final Path testFolder = Files.createDirectories(folder.resolve("test"));

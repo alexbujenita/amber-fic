@@ -7,7 +7,7 @@ import picocli.CommandLine;
         scope = CommandLine.ScopeType.INHERIT,
         mixinStandardHelpOptions = true,
         description = "Provides utilities to perform checks on files.",
-        version = "0.0.1",
+        versionProvider = AmberficVersion.class,
         subcommands = {CreateCommand.class})
 public class AmberficCLI {
 

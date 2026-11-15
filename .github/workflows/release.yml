@@ -8,7 +8,31 @@ permissions:
   contents: read
 
 jobs:
+  check-version:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v7
+
+      - name: Setup Temurin
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Check pom version against tag
+        shell: bash
+        run: |
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          POM_VERSION=$( ./mvnw -q help:evaluate -Dexpression=project.version -DforceStdout )
+          if [ "$TAG_VERSION" != "$POM_VERSION" ]; then
+            echo "::error::Version mismatch! Tag ($TAG_VERSION) does not match POM ($POM_VERSION)."
+            exit 1
+          fi
+          echo "All good! Versions match ($TAG_VERSION)."
+
   build:
+    needs: check-version
     strategy:
       fail-fast: false
       matrix:

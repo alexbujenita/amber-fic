@@ -3,8 +3,10 @@ package io.github.alexbujenita.amberfic.core;
 import static io.github.alexbujenita.amberfic.core.util.Constants.ABC_SHA_512;
 import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_512;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -30,5 +32,17 @@ class AmberficTest {
         final String checksumContents = Files.readString(checksum);
 
         assertThat(checksumContents).isEqualTo(EMPTY_SHA_512 + "  sub/a.txt\n" + ABC_SHA_512 + "  z.txt\n");
+    }
+
+    @Test
+    void createThrowsAnErrorIfManifestAlreadyPresent(@TempDir Path tmpDir) throws IOException {
+        // Given an existing manifest
+        final Path existingManifest = tmpDir.resolve("amberfic_checksum.sha512");
+        final String existingManifestContent = "hash  file\n";
+        Files.writeString(existingManifest, existingManifestContent);
+
+        // when we call the create method then it throws an error and the manifest isn't touched
+        assertThatThrownBy(() -> Amberfic.create(tmpDir)).isInstanceOf(ManifestAlreadyExistsException.class);
+        assertThat(existingManifest).hasBinaryContent(existingManifestContent.getBytes(StandardCharsets.UTF_8));
     }
 }

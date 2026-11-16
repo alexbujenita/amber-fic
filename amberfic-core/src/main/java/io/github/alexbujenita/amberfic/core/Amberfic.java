@@ -12,8 +12,15 @@ public final class Amberfic {
     private Amberfic() {}
 
     public static void create(Path root) throws IOException {
-        final Results walkResults = new FileWalker().walk(root);
         final Hasher hasher = new Hasher();
+        final String manifestFileName = ManifestFiles.fileName(hasher.getAlgorithm());
+        final Path manifestFilePath = root.resolve(manifestFileName);
+
+        if (Files.exists(manifestFilePath)) {
+            throw new ManifestAlreadyExistsException(manifestFilePath.toString());
+        }
+
+        final Results walkResults = new FileWalker().walk(root);
         final List<ChecksumEntry> entries =
                 new ArrayList<>(walkResults.scannedFiles().size());
 
@@ -24,6 +31,6 @@ public final class Amberfic {
         }
 
         final ChecksumWriter checksumWriter = new ChecksumWriter(entries);
-        checksumWriter.write(root.resolve(ManifestFiles.fileName(hasher.getAlgorithm())));
+        checksumWriter.write(manifestFilePath);
     }
 }

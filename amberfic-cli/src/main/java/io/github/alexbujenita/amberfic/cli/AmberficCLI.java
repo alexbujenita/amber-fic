@@ -21,6 +21,6 @@ public class AmberficCLI {
     }
 
     static int run(CommandLine cmd, String... args) {
-        return cmd.execute(args);
+        return cmd.setExecutionExceptionHandler(new ExceptionHandler()).execute(args);
     }
 }

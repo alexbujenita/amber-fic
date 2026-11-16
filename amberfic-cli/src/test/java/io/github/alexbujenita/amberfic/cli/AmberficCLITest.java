@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,5 +60,31 @@ class AmberficCLITest {
         final String manifest = Files.readString(testFolder.resolve("amberfic_checksum.sha512"));
         assertThat(exitCode).isZero();
         assertThat(manifest).isEqualTo(expectedManifest);
+    }
+
+    @Test
+    void createShouldFailOnAnExistingChecksumFile(@TempDir Path folder) throws IOException {
+        // given a folder, a file in it and an existing manifest
+        final Path testFolder = Files.createDirectories(folder.resolve("test"));
+        final Path testFile = testFolder.resolve("a.txt");
+        final Path existingManifest = testFolder.resolve("amberfic_checksum.sha512");
+        Files.writeString(testFile, "ABC");
+        final String existingManifestContents = "not_real  a.txt\n";
+        Files.writeString(existingManifest, existingManifestContents);
+
+        // when we call the create command
+        final String[] args = {"create", testFolder.toString()};
+        final int exitCode = AmberficCLI.run(cmd, args);
+
+        // then we have an error as a manifest already exists and the previous manifest is still there
+        assertThat(outWriter.toString()).isEmpty();
+        assertThat(errorWriter)
+                .hasToString(
+                        "Create cannot overwrite an existing manifest, either call update or delete the manifest manually."
+                                + System.lineSeparator());
+        assertThat(exitCode).isEqualTo(2);
+        assertThat(existingManifest)
+                .binaryContent()
+                .containsExactly(existingManifestContents.getBytes(StandardCharsets.UTF_8));
     }
 }

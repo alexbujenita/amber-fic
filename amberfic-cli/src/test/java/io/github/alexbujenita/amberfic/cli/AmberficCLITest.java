@@ -87,4 +87,20 @@ class AmberficCLITest {
                 .binaryContent()
                 .containsExactly(existingManifestContents.getBytes(StandardCharsets.UTF_8));
     }
+
+    @Test
+    void createInformsTheUserIfTheSourceDirDoesntExist(@TempDir Path folder) {
+        // given a folder that doesn't exist, when we call the create command
+        // then the user is informed of the missing source
+        final Path testFolder = folder.resolve("not_there");
+
+        final String[] args = {"create", testFolder.toString()};
+        final int exitCode = AmberficCLI.run(cmd, args);
+
+        assertThat(exitCode).isEqualTo(2);
+        assertThat(outWriter.toString()).isEmpty();
+        assertThat(errorWriter)
+                .hasToString("The passed directory doesn't exist, make sure you typed the correct path." + " "
+                        + testFolder + System.lineSeparator());
+    }
 }

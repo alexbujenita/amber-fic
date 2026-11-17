@@ -45,4 +45,11 @@ class AmberficTest {
         assertThatThrownBy(() -> Amberfic.create(tmpDir)).isInstanceOf(ManifestAlreadyExistsException.class);
         assertThat(existingManifest).hasBinaryContent(existingManifestContent.getBytes(StandardCharsets.UTF_8));
     }
+
+    @Test
+    void createThrowsAnErrorIfDirDoesntExist(@TempDir Path tmpDir) {
+        // given / when we call the create method on a non existing dir then it throws an error
+        assertThatThrownBy(() -> Amberfic.create(tmpDir.resolve("nowhere")))
+                .isInstanceOf(SourceDirectoryNotFoundException.class);
+    }
 }

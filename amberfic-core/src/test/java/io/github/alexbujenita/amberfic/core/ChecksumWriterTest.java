@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import io.github.alexbujenita.amberfic.core.exceptions.StaleTempFileException;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.StringWriter;

@@ -103,4 +103,20 @@ class AmberficCLITest {
                 .hasToString("The passed directory doesn't exist, make sure you typed the correct path." + " "
                         + testFolder + System.lineSeparator());
     }
+
+    @Test
+    void createInformsTheUserIfTheSourceIsNotADir(@TempDir Path folder) throws IOException {
+        // given a file as the source
+        final Path file = folder.resolve("file.txt");
+        Files.writeString(file, "just a txt file, breaking the command...\n");
+
+        // when we call the create command then the user is informed of the mistake
+        final String[] args = {"create", file.toString()};
+        final int exitCode = AmberficCLI.run(cmd, args);
+
+        assertThat(exitCode).isEqualTo(2);
+        assertThat(outWriter.toString()).isEmpty();
+        assertThat(errorWriter)
+                .hasToString("The passed source is not a directory." + " " + file + System.lineSeparator());
+    }
 }

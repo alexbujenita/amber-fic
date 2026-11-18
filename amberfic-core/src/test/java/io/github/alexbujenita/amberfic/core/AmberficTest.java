@@ -5,6 +5,9 @@ import static io.github.alexbujenita.amberfic.core.util.Constants.EMPTY_SHA_512;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.alexbujenita.amberfic.core.exceptions.ManifestAlreadyExistsException;
+import io.github.alexbujenita.amberfic.core.exceptions.SourceDirectoryNotFoundException;
+import io.github.alexbujenita.amberfic.core.exceptions.SourceNotDirectoryException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -51,5 +54,15 @@ class AmberficTest {
         // given / when we call the create method on a non existing dir then it throws an error
         assertThatThrownBy(() -> Amberfic.create(tmpDir.resolve("nowhere")))
                 .isInstanceOf(SourceDirectoryNotFoundException.class);
+    }
+
+    @Test
+    void createThrowsAnErrorIfSourceIsntADir(@TempDir Path tmpDir) throws IOException {
+        // given a file
+        final Path file = tmpDir.resolve("file.txt");
+        Files.writeString(file, "just a txt file\n");
+
+        // when we call the create method on a file instead of a directory then it throws an error
+        assertThatThrownBy(() -> Amberfic.create(file)).isInstanceOf(SourceNotDirectoryException.class);
     }
 }

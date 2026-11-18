@@ -1,5 +1,6 @@
 package io.github.alexbujenita.amberfic.core;
 
+import io.github.alexbujenita.amberfic.core.exceptions.StaleTempFileException;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;

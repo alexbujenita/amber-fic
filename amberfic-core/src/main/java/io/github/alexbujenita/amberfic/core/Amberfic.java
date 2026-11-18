@@ -1,5 +1,8 @@
 package io.github.alexbujenita.amberfic.core;
 
+import io.github.alexbujenita.amberfic.core.exceptions.ManifestAlreadyExistsException;
+import io.github.alexbujenita.amberfic.core.exceptions.SourceDirectoryNotFoundException;
+import io.github.alexbujenita.amberfic.core.exceptions.SourceNotDirectoryException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -17,9 +20,12 @@ public final class Amberfic {
         final Hasher hasher = new Hasher();
         final String manifestFileName = ManifestFiles.fileName(hasher.getAlgorithm());
 
-        // check the source exists
+        // check the source exists and that it is a directory
         try {
-            final BasicFileAttributes _ = Files.readAttributes(root, BasicFileAttributes.class);
+            final BasicFileAttributes attrs = Files.readAttributes(root, BasicFileAttributes.class);
+            if (!attrs.isDirectory()) {
+                throw new SourceNotDirectoryException(root.toString());
+            }
         } catch (NoSuchFileException nsfe) {
             throw new SourceDirectoryNotFoundException(root.toString(), nsfe, "Input source not found.");
         }

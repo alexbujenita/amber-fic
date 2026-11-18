@@ -1,4 +1,4 @@
-package io.github.alexbujenita.amberfic.core;
+package io.github.alexbujenita.amberfic.core.exceptions;
 
 import java.nio.file.NoSuchFileException;
 

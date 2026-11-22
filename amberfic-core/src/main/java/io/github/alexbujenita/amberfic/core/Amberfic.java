@@ -3,6 +3,7 @@ package io.github.alexbujenita.amberfic.core;
 import io.github.alexbujenita.amberfic.core.exceptions.ManifestAlreadyExistsException;
 import io.github.alexbujenita.amberfic.core.exceptions.SourceDirectoryNotFoundException;
 import io.github.alexbujenita.amberfic.core.exceptions.SourceNotDirectoryException;
+import io.github.alexbujenita.amberfic.core.exceptions.StaleTempFileException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -35,6 +36,13 @@ public final class Amberfic {
 
         if (Files.exists(manifestFilePath)) {
             throw new ManifestAlreadyExistsException(manifestFilePath.toString());
+        }
+
+        // also check the tmp manifest doesn't exist, stop early instead of erroring after a long hashing session
+        final Path manifestTmpFilePath = root.resolve(manifestFileName + ManifestFiles.TMP_SUFFIX);
+
+        if (Files.exists(manifestTmpFilePath)) {
+            throw new StaleTempFileException(manifestTmpFilePath.toString(), null);
         }
 
         final Results walkResults = new FileWalker().walk(root);

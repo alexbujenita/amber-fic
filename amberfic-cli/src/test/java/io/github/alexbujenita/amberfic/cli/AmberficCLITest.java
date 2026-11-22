@@ -89,6 +89,31 @@ class AmberficCLITest {
     }
 
     @Test
+    void createShouldFailOnAnExistingTempChecksumFile(@TempDir Path folder) throws IOException {
+        // given a folder, a file in it and an existing tmp manifest
+        final Path testFolder = Files.createDirectories(folder.resolve("test"));
+        final Path testFile = testFolder.resolve("a.txt");
+        final Path existingTmpManifest = testFolder.resolve("amberfic_checksum.sha512.tmp");
+        Files.writeString(testFile, "ABC");
+        final String existingTmpManifestContents = "not_real  a.txt\n";
+        Files.writeString(existingTmpManifest, existingTmpManifestContents);
+
+        // when we call the create command
+        final String[] args = {"create", testFolder.toString()};
+        final int exitCode = AmberficCLI.run(cmd, args);
+
+        // then we have an error as a temp manifest already exists and it's left untouched
+        assertThat(outWriter.toString()).isEmpty();
+        assertThat(errorWriter)
+                .hasToString("Existing TMP file detected, if no other amberfic instances are running, delete it : "
+                        + existingTmpManifest + System.lineSeparator());
+        assertThat(exitCode).isEqualTo(2);
+        assertThat(existingTmpManifest)
+                .binaryContent()
+                .containsExactly(existingTmpManifestContents.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
     void createInformsTheUserIfTheSourceDirDoesntExist(@TempDir Path folder) {
         // given a folder that doesn't exist, when we call the create command
         // then the user is informed of the missing source
